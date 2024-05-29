@@ -16,6 +16,11 @@ emphasis on methodological transparency. Current features:
     - Power spectral analysis
     - Spindle detection algorithms
 
+### What is an EEG 
+
+In this package, an EEG is a struct with fields 
+
+    - `signals`: A dictionary mapping channel names (`String`) to numeric signals `Vector{Float32}`
 
 ### Reading EEG data
 

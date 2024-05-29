@@ -45,9 +45,3 @@ function relative_spindle_power(x::Vector{<:AbstractFloat}, fs::Integer)
 end
 
 
-
-#x = [sin(100 * x * 2 * pi) + 4 * sin(110 *x *2 * pi) for x in 1:1/500:5]
-#df = CSV.read("EEG_filtered_data.txt", CSV.Tables.matrix; skipto=2)
-#signal = df[:, 2]
-#Σ = sigma_index(signal, 500)
-#findall(x -> x >= 4.5, Σ)
