@@ -1,4 +1,4 @@
-name = "JEEG"
+name = "EEGToolkit"
 uuid = "60d25398-4b8b-433c-a8d4-4fe867135cfd"
 authors = ["Santiago Lopez Pereyra"]
 version = "1.0.0-DEV"

@@ -1,4 +1,4 @@
-module JEEG
+module EEGToolkit
 
 
 export EEG
