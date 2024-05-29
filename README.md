@@ -3,22 +3,18 @@
 [![Build Status](https://github.com/slopezpereyra/JEEG.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/slopezpereyra/JEEG.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
 
-# EEG Toolkit
-
 > :last_quarter_moon_with_face: Developed at the [Laboratory for the Study of
 > Sleep Slow-wave activity](https://www.med.upenn.edu/slowwavelab/)
 
-A scientific package for computational EEG analysis with special features 
-for sleep neuroscience. The package emphasizes methodological transparency,
-specially in power spectral analysis, making it easy to query and report
-the methods used. 
+A scientific package for computational EEG analysis with an
+emphasis on methodological transparency. Current features:
 
-- Loading EEG data
-- EEG visualization
-- Sleep stage handling and NREM period detection
-- Power spectral analysis
-- Spindle detection algorithms
-- NREM period detection
+- EEG Computational Toolkit
+    - Loading EEG data
+    - EEG visualization
+    - Sleep stage handling and NREM period detection
+    - Power spectral analysis
+    - Spindle detection algorithms
 
 
 ### Reading EEG data
@@ -222,17 +218,16 @@ $$
 with $\varphi_i \in \\{ w \in \\{1, 2, 3, 4, 6\\}^+ : \text{number of 2, 3, 4s in
 } w \geq n \\}$.
 
-Thus, it transforms the problem of finding the $k$ underlying NREM periods in a series of
-sleep stages into the problem of finding the $k$ substrings $\phi_1, \ldots,
+Thus, the problem of finding the $k$ underlying NREM periods in a series of
+sleep stages becomes the problem of finding the $k$ substrings $\phi_1, \ldots,
 \phi_k$ of $\alpha$. This problem is trivial from an implementation
-perspective.
+perspective, since programming languages include regular expressions natively.
 
-Importantly, in the first and last NREM periods, the algorithm defines $\phi_i$ as
+In the first and last NREM periods, we simply change $\phi_i$ to
 
 $$
 \phi_i = \varphi_i (5^+ | 6^m6^*)
 $$
-
 
 
 
