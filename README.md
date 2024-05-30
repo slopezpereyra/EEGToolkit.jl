@@ -20,55 +20,21 @@ emphasis on methodological transparency. Current features:
 
 In this package, an EEG is a struct with fields 
 
-    - `signals`: A dictionary mapping channel names (`String`) to numeric signals `Vector{Float32}`
+- `signals`: A dictionary mapping channel names (`String`) to numeric signals `Vector{<:AbstractFloat}`
+- `sampling_rates`: A dictionary mapping channel names (`String`) to their sampling rates (`Integer`)
+- `epoch_length`: Number of seconds (`Integer`) understood to comprise an epoch.
+- `staging`: A `Vector{String}` s.t. the $i$th word in the vector denotes the stage of the $i$th epoch in the EEG. 
+-`id`: A `String` identifier for this EEG; defaults to an empty string.
 
 ### Reading EEG data
 
-Reading EEG data is straightforward. The `EEG` function
-`EEG(file, fs,
-epoch_length, staging)` reads an EDF file and instantiates an `EEG` structure.
-`epoch_length` is the length in seconds that is understood to account for an
-epoch. `staging` is an optionary vector of strings (e.g. `[W, W, W, … , REM,
-REM, N1, N2, N2, … ]`) s.t. `staging[i] = σ` implies that the `i`th epoch
-corresponds to the `σ` sleep stage. This is of course specific to sleep
-neuroscience.
-
-For example, I have a test EDF file with a full-night EEG called `edf2.edf`.
-
-```julia 
-eeg = EEG("edf2.edf", 500, 30, [])
-```
-
-The `signals` dictionary field in an `EEG` is a `String ->
-Vector{<:AbstractFloat}` association containing all EEG channels. In this case, 
-
-```julia 
-print(keys(eeg.signals))
-
-> ["Leg 1", "EEG C4-A1", "Leg 2", "EMG Chin", "EEG F3-A2", "EEG C3-A2", "EOG ROC-A2", "EEG F4-A1", "ECG II", "EEG O1-A2", "SpO2", "ECG I", "EEG O2-A1", "EOG LOC-A2"]
-```
-
-### Epoching 
-
-Let $N$ denote the length of the EEG signals in samples (not in time). It is
-easy to see that $N = E E_n f_s$ where $E$ is the epoch length and $E_n$ the
-number of epochs in the EEG.
-
-Informally, an epoch is a time region. This package implements the following
-semantics: an `epoch` is a function $e : \mathbb{N} \mapsto \mathbb{N}^2$ s.t.
-$e(n) = (i, j)$ is interpreted as: the indexes $i, i+1, \ldots, j$ of a signal
-$s_1, \ldots, s_N$ correspond to the $n$th epoch. Via multiple dispatch, we 
-extend this semantics in Julia by overloading the notation $e$ with the
-following definition: $e : \mathbb{N}^2 \to \mathbb{N}^2$ is s.t. $e(n, m) = (i,
-j)$ is interpreted as: the indexes $i, i+1, \ldots, j$ of a signal $s_1, \ldots, s_N$ 
-correspond to all values in the epochs $n, n+1, \ldots, m$.
-
-The corresponding `epoch(eeg, n, channel)` and `epoch(eeg, n, m, channel)`
-functions can be used to rapidly extract subsets of the EEG. For example,
+To read an EDF file, 
 
 ```julia
-signal = epoch(eeg, 100, 200, "EEG C3-A2") # Extract all data from C3-A2 from epoch 100 to epoch 200.
+eeg_var_name = EEG(file, epoch_length, staging, id)
 ```
+
+The `EEG` constructor instantiates an `EEG` structure. 
 
 ### Spectral analysis
 
@@ -124,11 +90,11 @@ Our filtering functions are simply wrappers around the `DSP.jl` package
 and are very easy to use. The dispatches of the `filter!` function are:
 
 ```julia
-filter!(eeg::EEG, channel::String, digfilter, cut_off)
+sfilter!(eeg::EEG, channel::String, digfilter, cut_off)
 
-filter!(eeg::EEG, channels::Vector{<:String}, digfilter, cut_off)
+sfilter!(eeg::EEG, channels::Vector{<:String}, digfilter, cut_off)
 
-filter!(eeg::EEG, digfilter, cut_off)
+sfilter!(eeg::EEG, digfilter, cut_off)
 ```
 
 If no channel is given, all EEG signals are filtered. For example,
