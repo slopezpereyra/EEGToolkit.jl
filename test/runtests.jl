@@ -1,4 +1,4 @@
-using JEEG
+using EEGToolkit
 using Test
 
 @testset "EEGToolkit.jl" begin
