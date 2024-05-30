@@ -1,6 +1,6 @@
 using JEEG
 using Test
 
-@testset "JEEG.jl" begin
+@testset "EEGToolkit.jl" begin
     # Write your tests here.
 end
