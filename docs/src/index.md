@@ -10,6 +10,7 @@
 - Spindle detection algorithms
 ## Function Documentation
 ```@docs
+EEG
 epoch
 get_stage_indexes 
 plot_eeg_overlay 
