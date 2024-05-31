@@ -9,5 +9,5 @@ makedocs(
                 "Home" => "index.md"
                ])
 deploydocs(;
-    repo="github.com/slopezpereyra/EEGToolkit.jl",
+    repo="github.com/slopezpereyra/EEGToolkit.jl.git",
 )
