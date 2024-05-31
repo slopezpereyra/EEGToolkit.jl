@@ -13,13 +13,11 @@ band. Per each 1 second window of the EEG,
 ``\\alpha_{mean}, \\theta_{mean}``
 - the maximum alpha amplitude ``\\alpha_{max}``
 
-are all computed. The ``\\Sigma``-index is defind to be 
+are all computed. The ``\\Sigma``-index is defined to be zero if ``\\alpha_max > S_{max}``,
+and otherwise
 
 ```math 
-f(S_{max}, \\alpha_{mean}, \\phi_{mean}) = \\begin{cases} 
-0 & \\alpha_{max} > S_{max} \\\\
-\\frac{2S_{max}}{\\alpha_{mean} + \\phi_{mean} } & otherwise
-\\end{cases}
+f(S_{max}, \\alpha_{mean}, \\phi_{mean}) = \\frac{2S_{max}}{ \\alpha_{mean} + \\phi_{mean} } 
 ```
 
 Higher values are indicative of a higher spindle probability. The rejection
@@ -64,10 +62,10 @@ RSP(t) = \\frac{\\int_{11}^{16} S(t, f) df}{\\int_{0.5}^{40} S(t, f) df}
 
 This definition is more intelligible than the that of the sigma index, insofar
 as it represents the ratio of the total power in the spindle band with respect
-to the total power in the ``\\delta-\\theta-\\alpha-\\phi`` frequency range. It is evident
+to the total power in the ``\\delta`` to ``\phi`` frequency range. It is evident
 by definition that ``0 \leq RSP \leq 1``. Higher values are indicative of a higher spindle
 probability (it should be clear that ``RSP`` is not a probability itself).
-The rejection threshold recommended in the original paper is ``\\lambda = 0.22``
+The rejection threshold recommended in the original paper is ``0.22``.
 """
 function relative_spindle_power(x::Vector{<:AbstractFloat}, fs::Integer)
     segs = overlaps(x, fs, 0)
