@@ -23,6 +23,12 @@ eeg_data = EEG("path/to/edf_data/data.edf", 30, staging_vector)
 
 # Alternatively, if no stage data exists, it is safe to do 
 eeg_data = EEG("path/to/edf_data/data.edf", 30, [])
+
+# or simply 
+eeg_data = EEG("path/to/edf_data/data.edf", 30) # Staging vector defaults to [] if not provided
+
+# or simply
+eeg_data = EEG("path/to/edf_data/data.edf") # Epoch length defaults to 30 if not provided.
 ```
 """
 mutable struct EEG
@@ -33,7 +39,7 @@ mutable struct EEG
     staging::Vector{String}
     id::String
 
-    function EEG(file::String, epoch_length::Integer=30, staging::Vector{String}=[], id::String="")
+    function EEG(file::String, epoch_length::Integer=30, staging::Vector{String}=[""], id::String="")
         id = (id == "") ? file : id
 
         eeg = EDF.read(file)
@@ -49,8 +55,6 @@ mutable struct EEG
 
         new(S, FS, fₛ, epoch_length, staging, id)
     end
-
-
 end
 
 
