@@ -44,7 +44,18 @@ function stage_to_word(stages)
     return join(trans, "")
 end
 
+"""
+`nrem(staging::Vector, n::Integer=30, m::Integer=10)`
 
+Finds the `k` underlying NREM periods in a staging vector.
+Returns a vector of vectors `V` s.t. the `i`th vector in `V` 
+contains the epochs which comprise the `i`th NREM period. Thus,
+the length of `V` is `k` the number of NREM periods.
+
+The `staging` field of the EEG must have been set to a vector 
+containing only the symbols `1, …, 6, ?` where `5` denotes 
+REM, `6` denotes wakefulness, and `?` denotes unscored/unstaged.
+"""
 function nrem(staging::Vector, n::Integer=30, m::Integer=10)
 
     if Set(unique(staging)) ⊈ Set(["1", "2", "3", "4", "5", "6", "?"])
@@ -96,6 +107,12 @@ function nrem(staging::Vector, n::Integer=30, m::Integer=10)
     return locs
 end
 
+"""
+`nrem(eeg::EEG, n::Integer=30, m::Integer=10)`
+
+Finds the `k` underlying NREM periods in the staging vector 
+of an EEG.
+"""
 function nrem(eeg::EEG, n::Integer=30, m::Integer=10)
     nrem(eeg.staging, n, m)
 end

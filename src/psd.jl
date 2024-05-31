@@ -193,6 +193,7 @@ Within each window, the `PSD` constructor is used to compute either a Welch or
 a Barlett method estimation, depending on the `inner_window_length` and 
 `inner_overlap` parameters. An optional normalization factor and a zero-padding 
 length can be included, as in the `PSD` constructor.
+- `Spectrogram(segs::Vector{Vector{<:AbstractFloat}}, fs::Integer, segment_length::Integer, overlap::AbstractFloat, normalization::Union{AbstractFloat,Integer}=1, pad::Integer=0)`: This constructor does not take a signal but *a split or windowed signal*. This is useful, for example, when the EEG is split into windows corresponding to a specific period (e.g. NREM epochs). In this case, each time-instance in the Spectrogram corresponds to one of the windows. Aside from this, there is no difference with the previous constructor.
 """
 struct Spectrogram
 
