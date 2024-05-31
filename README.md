@@ -16,6 +16,8 @@ emphasis on methodological transparency. Current features:
     - Power spectral analysis
     - Spindle detection algorithms
 
+Read the documentation [here](https://slopezpereyra.github.io/EEGToolkit.jl/dev/).
+
 ### What is an EEG 
 
 In this package, an EEG is a struct with fields 
