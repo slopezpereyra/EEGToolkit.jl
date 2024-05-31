@@ -2,25 +2,30 @@ using EDF
 using Plots
 
 
+"""
+A mutable struct representing EEG data with associated metadata.
+
+# Fields
+- `signals::Dict{String, Vector{<:AbstractFloat}}`: A dictionary mapping signal labels (strings) to arrays of floating-point values.
+- `sampling_rates::Dict{String, Integer}`: A dictionary mapping signals (strings) to the integer sampling rates.
+- `fs::Integer`: A default sampling rate that will be used for calculations. Defaults to the maximum sampling rate among all signals.
+- `epoch_length::Integer`: Length of each epoch (in seconds).
+- `staging::Vector{String}`: A vector of stage labels corresponding to each epoch.
+- `id::String`: An identifier for the EEG.
+
+# Constructors
+`EEG(file, fs, epoch_length, staging)`: Constructs an `EEG` object from an EDF file (`file`) containing EEG data. The function reads the signals, computes the necessary metadata (`fs`, `N`, `epoch_count`), and initializes the `EEG` struct with the provided `staging` vector.
+
+# Example
+```julia
+staging_vector = CSV.read("path/to/stage_data/eeg_staging.csv") # A vector with a stage per each epoch in the EEG
+eeg_data = EEG("path/to/edf_data/data.edf", 30, staging_vector)
+
+# Alternatively, if no stage data exists, it is safe to do 
+eeg_data = EEG("path/to/edf_data/data.edf", 30, [])
+"""
+
 mutable struct EEG
-    """
-    A mutable struct representing EEG data with associated metadata.
-
-    # Fields
-    - `signals::Dict{String, Vector{<:AbstractFloat}}`: A dictionary mapping signal labels (strings) to arrays of floating-point values.
-    - `sampling_rates::Dict{String, Integer}`: A dictionary mapping signals (strings) to the integer sampling rates.
-    - `fs::Integer`: Sampling frequency (in Hz) of the EEG signals.
-    - `epoch_length::Integer`: Length of each epoch (in seconds).
-    - `staging::Vector{String}`: A vector of stage labels corresponding to each epoch.
-    - `id::String`: An optional identifier for the EEG.
-
-    # Constructor
-    - `EEG(file, fs, epoch_length, staging)`: Constructs an `EEG` object from an EDF file (`file`) containing EEG data. The function reads the signals, computes the necessary metadata (`fs`, `N`, `epoch_count`), and initializes the `EEG` struct with the provided `staging` vector.
-
-    ## Example
-    ```julia
-    eeg_data = EEG("data.edf", 256, 30, ["Wake", "1", "1", …, "REM", "REM", "2", "3", …])
-    """
     signals::Dict{String,Vector{<:AbstractFloat}}
     sampling_rates::Dict{String,Integer}
     fs::Integer
@@ -28,7 +33,8 @@ mutable struct EEG
     staging::Vector{String}
     id::String
 
-    function EEG(file, epoch_length, staging, id="")
+    function EEG(file::String, epoch_length::Integer=30, staging::Vector{String}=[], id::String="")
+        id = (id == "") ? file : id
 
         eeg = EDF.read(file)
         S = Dict()
@@ -39,97 +45,89 @@ mutable struct EEG
             FS[signal.header.label] = Int(signal.header.samples_per_record / eeg.header.seconds_per_record)
         end
 
-        new(S, FS, first(values(FS)), epoch_length, staging, id)
+        fₛ = maximum(values(FS))
+
+        new(S, FS, fₛ, epoch_length, staging, id)
     end
+
 
 end
 
 
 """
-An epoch e is a function ℕ ↦ ℕ₀² s.t. e(n) = (x, y) if and only if 
-[x, y] is the space of all index values in the ith epoch of an EEG signal.
-
-Extending this, when e : ℕ² ↦ ℕ₀², we have e(n, m) = (x, y) if and only if 
-[x, y] is the space of all indexes corresponding to values in an EEG signal 
-in epochs n, n +1, …, m.
- """
-function epoch(eeg::EEG, n::Integer)
-    return [((n - 1) * eeg.fs * eeg.epoch_length) + 1, n * eeg.fs * eeg.epoch_length]
+Returns a vector [i₁, …, iₖ] with all indexes corresponding to the `n`th epoch of the EEG.
+The default sampling rate is used to compute the indexes.
+"""
+function epoch(eeg::EEG, n::Integer, fs::Integer=-1)
+    fs = (fs == -1) ? eeg.fs : fs
+    return [((n - 1) * fs * eeg.epoch_length) + 1, n * fs * eeg.epoch_length]
 end
 
-function epoch(eeg::EEG, n::Integer, m::Integer)
-    """An epoch e is a function ℕ ↦ ℕ₀² s.t. if e(n) = (x, y) if and only if 
-       [x, y] is the space indexes of all values in an EEG signal in the nth epoch.
-
-        Extending this, when e : ℕ² ↦ ℕ₀², we have e(n, m) = (x, y) if and only if 
-        [x, y] is the space of all indexes corresponding to values in an EEG signal 
-        in epochs n, n +1, …, m.
-       """
+"""
+Returns a vector [i₁, …, iₖ] with all indexes corresponding to epochs `n, n+1, …, m` of the EEG.
+The default sampling rate is used to compute the indexes.
+"""
+function epoch(eeg::EEG, n::Integer, m::Integer, fs::Integer=-1)
     if (n == m)
         return epoch(eeg, n)
     end
     if (n > m)
         throw(ArgumentError("The second epoch should be greater than the first."))
     end
+    fs = (fs == -1) ? eeg.fs : fs
     return [((n - 1) * eeg.fs * eeg.epoch_length) + 1, m * eeg.fs * eeg.epoch_length]
 end
 
 """
-    An epoch e is a function ℕ ↦ ℕ₀² s.t. if e(n) = (x, y) if and only if 
-    [x, y] is the space indexes of all values in an EEG signal in the nth epoch.
-
-    Extending this, when e : ℕ² ↦ ℕ₀², we have e(n, m) = (x, y) if and only if 
-    [x, y] is the space of all indexes corresponding to values in an EEG signal 
-    in epochs n, n +1, …, m.
+Returns a vector [x₁, …, xₖ] with all values of the signal `channel` in the `n`th epoch.
 """
 function epoch(eeg::EEG, n::Integer, channel::String)
     signal = eeg.signals[channel]
-    bounds = epoch(eeg, n)
+    bounds = epoch(eeg, n, eeg.sampling_rates[channel])
     signal[bounds[1]:bounds[2]]
 end
 
 """
-    An epoch e is a function ℕ ↦ ℕ₀² s.t. if e(n) = (x, y) if and only if 
-    [x, y] is the space indexes of all values in an EEG signal in the nth epoch.
-
-    Extending this, when e : ℕ² ↦ ℕ₀², we have e(n, m) = (x, y) if and only if 
-    [x, y] is the space of all indexes corresponding to values in an EEG signal 
-    in epochs n, n +1, …, m.
+Returns a vector [x₁, …, xₖ] with all values of the signal `channel` in the epochs `n, n+1, …, m`.
 """
 function epoch(eeg::EEG, n::Integer, m::Integer, channel::String)
     signal = eeg.signals[channel]
-    bounds = epoch(eeg, n, m)
+    bounds = epoch(eeg, n, m, eeg.sampling_rates[channel])
     signal[bounds[1]:bounds[2]]
 end
 
-"""Generates time domain of an EEG signal from second `s` to second `e`."""
-function time(eeg::EEG, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer})
-    step = 1 / eeg.fs
+"""
+Given an EEG, generates the time vector t₁, …, tₙ corresponding to 
+EEG signals from time `s` to `e`.
+"""
+function gen_time_domain(eeg::EEG, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer}, fs::Integer=-1)
+    fs = (fs == -1) ? eeg.fs : fs
+    step = 1 / fs
     return [i for i in (s+step):step:e]
 end
 
 """
-    Plots with the active backend all EEG channels in `channels` in the 
-    range from the `n`th to the `m`th epoch.
+Plots with the active backend all EEG channels in `channels` in the 
+range from the `n`th to the `m`th epoch.
 """
 function plot_eeg(eeg::EEG, channels::String, n::Integer, m::Integer)
     if n > m
         throw(ArgumentError("m should be greater than n"))
     end
-    t = time(eeg, (n - 1) * eeg.epoch_length, m * eeg.epoch_length)
+    t = gen_time_domain(eeg, (n - 1) * eeg.epoch_length, m * eeg.epoch_length)
     signal = epoch(eeg, n, m, channels)
     plot(t, signal)
 end
 
 """
-    Plots with the active backend all EEG channels in `channels` in the 
-    range from the `n`th to the `m`th epoch.
+Plots with the active backend all EEG channels in `channels` in the 
+range from the `n`th to the `m`th epoch.
 """
 function plot_eeg(eeg::EEG, channels::Vector{String}, n::Integer, m::Integer)
     if n > m
         throw(ArgumentError("m should be greater than n"))
     end
-    t = time(eeg, (n - 1) * eeg.epoch_length, m * eeg.epoch_length)
+    t = gen_time_domain(eeg, (n - 1) * eeg.epoch_length, m * eeg.epoch_length)
     signals = [epoch(eeg, n, m, chan) for chan in channels]
     plot(t, signals, layout=(length(signals), 1), legend=false)
     xlabel!("Time")
@@ -137,14 +135,14 @@ function plot_eeg(eeg::EEG, channels::Vector{String}, n::Integer, m::Integer)
 end
 
 """
-    Plots with the active backend all EEG channels in `channels` in the 
-    range from the `n`th to the `m`th epoch.
+Plots with the active backend all EEG channels in `channels` in the 
+range from the `n`th to the `m`th epoch.
 """
 function plot_eeg_overlay(eeg::EEG, channels::Vector{String}, n::Integer, m::Integer)
     if n > m
         throw(ArgumentError("m should be greater than n"))
     end
-    t = time(eeg, (n - 1) * eeg.epoch_length, m * eeg.epoch_length)
+    t = gen_time_domain(eeg, (n - 1) * eeg.epoch_length, m * eeg.epoch_length)
     signals = [epoch(eeg, n, m, chan) for chan in channels]
     Plots.plot(t, signals, legend=false)
     xlabel!("Time")
@@ -153,8 +151,8 @@ end
 
 
 """
-    This function maps an EEG and a`stages` vector to the array of all indexes whose values in an EEG 
-    signal pertain to a stage in `stages`.
+This function maps an EEG and a`stages` vector to the array of all indexes whose values in an EEG 
+signal pertain to a stage in `stages`.
 """
 function get_stage_indexes(eeg::EEG, stages::Vector)
 
@@ -171,34 +169,24 @@ function get_stage_indexes(eeg::EEG, stages::Vector)
 end
 
 """
-   Returns the subset of an EEG channel corresponding to a stage. 
+Returns the subset of an EEG channel corresponding to a stage. 
 """
 function get_stage(eeg::EEG, channel::String, stages::Vector)
     indexes = get_stage_indexes(eeg, stages)
     eeg.signals[channel][indexes]
 end
 
-function sfilter!(eeg::EEG, channel::String, digfilter, cut_off)
-    eeg.signals[channel] = filt(digitalfilter(digfilter(cut_off, fs=eeg.fs), Butterworth(4)), eeg.signals[channel])
-end
+"""
+Given an EEG, a 2x2 matrix associating epoch-subepoch pairs with artifacts, and a signal,
+returns a subset of the signal with all sub-epochs containing artifacts removed.
 
-function sfilter!(eeg::EEG, channels::Vector{<:String}, digfilter, cut_off)
-
-    for chan in channels
-        eeg.signals[chan] = filt(digitalfilter(digfilter(cut_off, eeg.fs), Butterworth(4)), eeg.signals[chan])
-    end
-end
-
-function sfilter!(eeg::EEG, digfilter, cut_off)
-    for chan in keys(eeg.signals)
-        eeg.signals[chan] = filt(digitalfilter(digfilter(cut_off, eeg.fs), Butterworth(4)), eeg.signals[chan])
-    end
-end
-
-function artifact_reject(eeg, anom_matrix, signal)
+The signal is split in epoch-length windows and each window is split in subepoch-length 
+windows; the matrix gives the epoch and subepoch indexes to be removed. 
+"""
+function artifact_reject(eeg::EEG, anom_matrix::Matrix, signal::String)
     x = eeg.signals[signal]
-    epochs = overlaps(x, eeg.fs*30, 0)
-    windows = map(x -> overlaps(x, eeg.fs * 5, 1/(eeg.fs*5)), epochs)
+    epochs = overlaps(x, eeg.fs * 30, 0)
+    windows = map(x -> overlaps(x, eeg.fs * 5, 1 / (eeg.fs * 5)), epochs)
     for epoch in unique(anom_matrix[:, 1])
         if epoch > length(windows)
             @warn("Anomaly was found on final epoch, which does not belong to the segmentation\n")

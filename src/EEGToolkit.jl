@@ -3,7 +3,7 @@ module EEGToolkit
 
 export EEG
 export epoch 
-export time 
+export gen_time_domain 
 export plot_eeg
 export plot_eeg_overlay
 export get_stage_indexes
