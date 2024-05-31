@@ -52,9 +52,9 @@ with ``w_i`` a Hanning window.
 
 # Fields
 
-- freq::Vector{<:AbstractFloat}: Frequency range of the spectrum
-- spectrum::Vector{<:AbstractFloat}: Estimated spectral amplitude
-- formula::String: A string representation of the formula used for the estimation.
+- `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
+- `spectrum::Vector{<:AbstractFloat}`: Estimated spectral amplitude
+- `formula::String`: A string representation of the formula used for the estimation.
 
 # Constructors
 `AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)` : Computes a direct PSD over a signal `x` with a given `sampling_rate`.

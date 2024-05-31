@@ -66,7 +66,7 @@ artifact_reject
 #### NREM period definition
 
 Following [Feinberg & Floyed](https://pubmed.ncbi.nlm.nih.gov/220659/) and
-Dijk, a NREM period is a sequence of epochs satisfying the following two
+Dijk, a NREM period is a sequence of epochs satisfying the following
 conditions:
 
 - It starts with stages 2, 3 or 4. 
@@ -78,9 +78,10 @@ The sequence is allowed to contain ocurrences of REM sleep or wakefulness
 in between, but the epochs corresponding to these occurrences will not be
 signaled as NREM. For example, in a stage sequence of the form
 
-$$\ldots ~ \text{ 10 minutes of 2}  ~ \text{A minute of REM} ~ \text{5 minutes of 3} ~ \text{5 minutes of REM} $$
+... - 10 minutes of 2 - A minute of REM - 5 minutes of 3 - 5 minutes of REM - ...
 
-the NREM period consists of the first 10 minutes of stage 2 and the 5 minutes of stage 3, ignoring the 1 minute of REM in-between them.
+the NREM period consists of the first 10 minutes of stage 2 and the 5 minutes
+of stage 3, ignoring the 1 minute of REM in-between them.
 
 Importantly, the restriction that ending REM periods must last at least 5
 minutes is not imposed when detecting the first and the last NREM period in a

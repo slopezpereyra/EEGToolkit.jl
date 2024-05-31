@@ -14,7 +14,7 @@ A mutable struct representing EEG data with associated metadata.
 - `id::String`: An identifier for the EEG.
 
 # Constructors
-`EEG(file, fs, epoch_length, staging)`: Constructs an `EEG` object from an EDF file (`file`) containing EEG data. The function reads the signals, computes the necessary metadata (`fs`, `N`, `epoch_count`), and initializes the `EEG` struct with the provided `staging` vector.
+`EEG(file::String, epoch_length::Integer=30, staging::Vector{String}=[""], id::String="")`: Constructs an `EEG` object from an EDF file (`file`) containing EEG data. The function reads the signals, computes the necessary metadata (`fs`, `N`, `epoch_count`), and initializes the `EEG` struct with the provided `staging` vector.
 
 # Example
 ```julia
