@@ -2,6 +2,8 @@ using FFTW
 using DSP
 
 """
+`overlaps(v::Vector{T}, L::Int, overlap_frac::Union{Float64,Int}) where {T}`
+
 Splits a vector `v` into segments of length `L` with an overlap `overlap_frac` expressed as a fraction of L. 
 """
 function overlaps(v::Vector{T}, L::Int, overlap_frac::Union{Float64,Int}) where {T}
@@ -47,7 +49,7 @@ one sided, with frequencies ranging from [0, fₛ/2].
 - formula::String: A string representation of the formula used for the estimation.
 
 # Constructors
-AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer) : Computes a direct PSD over a signal `x` with a given `sampling_rate`.
+`AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)` : Computes a direct PSD over a signal `x` with a given `sampling_rate`.
 """
 mutable struct AmplitudeSpectrum
 
@@ -76,15 +78,35 @@ end
 Structure for PSD estimations. Estimations are by default 
 one sided, with frequencies ranging from [0, fₛ/2].
 
+The default formula is 
+
+```math 
+\\frac{2|H(f)|^2}{f_s \\sum_i w_i^2}
+```
+
+with ``w_i`` a Hanning window. This means the estimation is normalized by 
+the sampling rate by default. This can be changed by setting the normalization 
+parameter equal to ``\frac{1}{f_s}``, canceling out the factor in the denominator. 
+
+If Barlett or Welch's mehtod is used (i.e. if the second constructor is used), the formula 
+becomes 
+        formula = "1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ( fₛ ∑  wᵢ² ) ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
+
+```math 
+\\frac{1}{M \\varphi} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
+```
+
+where ``\\varphi`` is an optional normalization factor defined by the `normalization` parameter (defaults to 1).
+
 # Fields
-- freq::Vector{<:AbstractFloat}: Frequency range of the spectrum
-- spectrum::Vector{<:AbstractFloat} : Estimated spectral density in dB.
-- method::String: Estimation method used 
-- formula::String : A string representation of the formula used for the estimation.
+- `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
+- `spectrum::Vector{<:AbstractFloat}` : Estimated spectral density in dB.
+- `method::String`: Estimation method used 
+- `formula::String` : A string representation of the formula used for the estimation.
 
 # Constructors
-- PSD(x::Vector, sampling_rate::Integer, pad::Integer = 0): Computes a direct PSD over a signal `x` with a given `sampling_rate`.
-- PSD(x::Vector, fs::Int, L::Int, overlap::Union{ <:AbstractFloat, Integer }, normalization::Union{ <:AbstractFloat, Integer } = 1): Splits the signal `x` into segments of length L with an `overlap` in [0, 1). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. If `overlap` is zero, this results in Barlett's method. If `overlap` is greater than zero, this results in Welch's method. If `pad` is zero no zero-padding is done. If `pad` is greater than zero, each segment is zero-padded to a  length of `pad`. 
+- `PSD(x::Vector, sampling_rate::Integer, pad::Integer = 0)`: Computes a direct PSD over a signal `x` with a given `sampling_rate`.
+- `PSD(x::Vector, fs::Int, L::Int, overlap::Union{ <:AbstractFloat, Integer }, normalization::Union{ <:AbstractFloat, Integer } = 1)`: Splits the signal `x` into segments of length L with an `overlap` in [0, 1). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. If `overlap` is zero, this results in Barlett's method. If `overlap` is greater than zero, this results in Welch's method. If `pad` is zero no zero-padding is done. If `pad` is greater than zero, each segment is zero-padded to a  length of `pad`. 
 """
 struct PSD
     freq::Vector{<:AbstractFloat}
@@ -151,13 +173,13 @@ PSD with overlapping windows. For Barlett's method, one can set the inner window
 length and the overlap to zero.
 
 # Fields
-- time::Vector : Time domain (x)
-- freq::Vector{<:AbstractFloat}: Frequency domain (y)
-- spectrums::Matrix{<:AbstractFloat}: Power spectrum (z). Rows are time and columns are frequency.
-- segment_length::Integer : Length of each segment in time.
+- `time::Vector` : Time domain (x)
+- `freq::Vector{<:AbstractFloat}`: Frequency domain (y)
+- `spectrums::Matrix{<:AbstractFloat}`: Power spectrum (z). Rows are time and columns are frequency.
+- `segment_length::Integer` : Length of each segment in time.
 
 # Constructors
-- Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, segment_length::Integer, overlap::AbstractFloat, inner_window_length::Integer, inner_overlap::AbstractFloat) : Computes the `Spectrogram` of a `signal` with sampling rate `fs` in windows of length `segment_length` (in number of samples) with a certain `overlap` ∈ [0, 1].
+- `Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, segment_length::Integer, overlap::AbstractFloat, inner_window_length::Integer, inner_overlap::AbstractFloat)` : Computes the `Spectrogram` of a `signal` with sampling rate `fs` in windows of length `segment_length` (in number of samples) with a certain `overlap` ∈ [0, 1].
 Within each window, the `PSD` constructor is used to compute either a Welch or 
 a Barlett method estimation, depending on the `inner_window_length` and 
 `inner_overlap` parameters. An optional normalization factor and a zero-padding 
@@ -207,6 +229,8 @@ end
 
 
 """
+`plot_spectrogram(spec::Spectrogram, freq_lim::AbstractFloat=30.0, type::Int=1, color=:nipy_spectral)`
+
 Plots a spectogram `spec` either in 2d (`type = 1`) or 3d (`type = 2`). An optional 
 frequency limit (`freq_lim`) may be set (defaults to 30Hz). The color palette 
 `color` may be set; defaults to `nipy_spectral`.
@@ -226,6 +250,8 @@ end
 
 
 """
+`next_power_of_two(n::Int)`
+
 Given an integer `n`, finds the least m = 2ᵏ s.t. m ≥ n.
 """
 function next_power_of_two(n::Int)
@@ -237,6 +263,8 @@ function next_power_of_two(n::Int)
 end
 
 """
+`zero_pad(v::Vector{<:AbstractFloat}, desired_length::Integer) where {T}`
+
 Zero-pads a numeric vector `v` to a `desired_length`
 """
 function zero_pad(v::Vector{<:AbstractFloat}, desired_length::Integer) where {T}
@@ -255,6 +283,8 @@ end
 
 
 """
+`freq_band(spec::Union{PSD,AmplitudeSpectrum}, lower::AbstractFloat, upper::AbstractFloat)`
+
 Given a PSD, returns a Vector{AbstractFloat} with the powers within the frequency band [lower, upper].
 """
 function freq_band(spec::Union{PSD,AmplitudeSpectrum}, lower::AbstractFloat, upper::AbstractFloat)
@@ -264,6 +294,8 @@ end
 
 
 """
+`freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat, window::Integer)`
+
 Given a spectrogram, returns a Vector{<:AbstractFloat} with the powers within a frequency band [lower, upper]
 of a specific window (row of the spectrogram).
 """
@@ -274,6 +306,8 @@ function freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat
 end
 
 """
+`freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
+
 Given a spectrogram, returns a Matrix{<:AbstractFloat} with the powers within a frequency band [lower, upper]
 across all windows.
 """

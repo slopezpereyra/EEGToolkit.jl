@@ -24,7 +24,6 @@ eeg_data = EEG("path/to/edf_data/data.edf", 30, staging_vector)
 # Alternatively, if no stage data exists, it is safe to do 
 eeg_data = EEG("path/to/edf_data/data.edf", 30, [])
 """
-
 mutable struct EEG
     signals::Dict{String,Vector{<:AbstractFloat}}
     sampling_rates::Dict{String,Integer}
@@ -55,6 +54,8 @@ end
 
 
 """
+`epoch(eeg::EEG, n::Integer, fs::Integer=-1)`
+
 Returns a vector [i₁, …, iₖ] with all indexes corresponding to the `n`th epoch of the EEG.
 The default sampling rate is used to compute the indexes.
 """
@@ -64,6 +65,8 @@ function epoch(eeg::EEG, n::Integer, fs::Integer=-1)
 end
 
 """
+`epoch(eeg::EEG, n::Integer, m::Integer, fs::Integer=-1)`
+
 Returns a vector [i₁, …, iₖ] with all indexes corresponding to epochs `n, n+1, …, m` of the EEG.
 The default sampling rate is used to compute the indexes.
 """
@@ -79,6 +82,8 @@ function epoch(eeg::EEG, n::Integer, m::Integer, fs::Integer=-1)
 end
 
 """
+`epoch(eeg::EEG, n::Integer, channel::String)`
+
 Returns a vector [x₁, …, xₖ] with all values of the signal `channel` in the `n`th epoch.
 """
 function epoch(eeg::EEG, n::Integer, channel::String)
@@ -97,6 +102,8 @@ function epoch(eeg::EEG, n::Integer, m::Integer, channel::String)
 end
 
 """
+`gen_time_domain(eeg::EEG, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer}, fs::Integer=-1)`
+
 Given an EEG, generates the time vector t₁, …, tₙ corresponding to 
 EEG signals from time `s` to `e`.
 """
@@ -120,6 +127,8 @@ function plot_eeg(eeg::EEG, channels::String, n::Integer, m::Integer)
 end
 
 """
+`plot_eeg(eeg::EEG, channels::Vector{String}, n::Integer, m::Integer)`
+
 Plots with the active backend all EEG channels in `channels` in the 
 range from the `n`th to the `m`th epoch.
 """
@@ -135,6 +144,8 @@ function plot_eeg(eeg::EEG, channels::Vector{String}, n::Integer, m::Integer)
 end
 
 """
+`plot_eeg_overlay(eeg::EEG, channels::Vector{String}, n::Integer, m::Integer)`
+
 Plots with the active backend all EEG channels in `channels` in the 
 range from the `n`th to the `m`th epoch.
 """
@@ -151,6 +162,8 @@ end
 
 
 """
+`get_stage_indexes(eeg::EEG, stages::Vector)`
+
 This function maps an EEG and a`stages` vector to the array of all indexes whose values in an EEG 
 signal pertain to a stage in `stages`.
 """
@@ -169,7 +182,9 @@ function get_stage_indexes(eeg::EEG, stages::Vector)
 end
 
 """
-Returns the subset of an EEG channel corresponding to a stage. 
+`function get_stage(eeg::EEG, channel::String, stages::Vector)`
+
+Returns all portions of an EEG channel in a given stage of the staging vector.
 """
 function get_stage(eeg::EEG, channel::String, stages::Vector)
     indexes = get_stage_indexes(eeg, stages)
@@ -177,6 +192,8 @@ function get_stage(eeg::EEG, channel::String, stages::Vector)
 end
 
 """
+`artifact_reject(eeg::EEG, anom_matrix::Matrix, signal::String)`
+
 Given an EEG, a 2x2 matrix associating epoch-subepoch pairs with artifacts, and a signal,
 returns a subset of the signal with all sub-epochs containing artifacts removed.
 
@@ -199,13 +216,4 @@ function artifact_reject(eeg::EEG, anom_matrix::Matrix, signal::String)
     clean = map(x -> vcat(x...), windows)
     return clean
 end
-
-
-
-
-
-
-
-
-
 
