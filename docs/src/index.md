@@ -5,14 +5,14 @@
 > Developed at the [Laboratory for the Study of
 > Sleep Slow-wave activity](https://www.med.upenn.edu/slowwavelab/)
 
-> The Gods of the earth and sea, <br>
-> Sought thro' Nature to find this Tree<br>
-> But their search was all in vain:<br>
-> There grows one in the Human Brain<br>
+> The Gods of the earth and sea 
+> Sought thro' Nature to find this Tree,
+> But their search was all in vain:
+> There grows one in the Human Brain.
 > 
-> - William Blake
+>  William Blake
 
-This package had three aims in mind: 
+This package has three aims in mind: 
  
 - Simplicity
 - Transparency
