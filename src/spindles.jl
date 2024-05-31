@@ -62,10 +62,10 @@ RSP(t) = \\frac{\\int_{11}^{16} S(t, f) df}{\\int_{0.5}^{40} S(t, f) df}
 
 This definition is more intelligible than the that of the sigma index, insofar
 as it represents the ratio of the total power in the spindle band with respect
-to the total power in the ``\\delta`` to ``\phi`` frequency range. It is evident
-by definition that ``0 \leq RSP \leq 1``. Higher values are indicative of a higher spindle
+to the total power in the ``\\delta`` to ``\\phi`` frequency range. It is evident
+by definition that ``0 \\leq RSP \\leq 1``. Higher values are indicative of a higher spindle
 probability (it should be clear that ``RSP`` is not a probability itself).
-The rejection threshold recommended in the original paper is ``0.22``.
+The rejection threshold recommended in the original paper is ``\\lambda = 0.22``.
 """
 function relative_spindle_power(x::Vector{<:AbstractFloat}, fs::Integer)
     segs = overlaps(x, fs, 0)
