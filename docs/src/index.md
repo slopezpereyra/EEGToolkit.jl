@@ -2,15 +2,22 @@
 
 *Computational EEG analysis with emphasis in sleep neuroscience.*
 
+---
+
 > Developed at the [Laboratory for the Study of
 > Sleep Slow-wave activity](https://www.med.upenn.edu/slowwavelab/)
+
+---
 
 > The Gods of the earth and sea\
 > Sought thro' Nature to find this Tree,\
 > But their search was all in vain:\
 > There grows one in the Human Brain.
 > 
->  William Blake
+> — William Blake
+
+---
+
 
 This package has three aims in mind: 
  
@@ -24,16 +31,10 @@ package should be transparent enough so as to be reported in a scientific
 paper.  *Efficiency* means that large EEGs (e.g. sleep EEGs) should be
 processed and analyzed in minutes or less.
 
-*Transparency* affects primarily spectral analysis. Most packages (e.g. the
+*Transparency* affects primarily spectral analysis (PSA). Most packages (e.g. the
 `gsignal` package in R) do not report how power spectrum analysis is done.
-Power spectral analysis is not standardized and may be computed in several many
-ways. This difficults comparing and testing results. This package reports the
-formula used for PSD estimation and incorporates features to extract such
-details from any `PSD` object.
-
-Lastly, this 
-
-
+Proprietary software is even less clear. This, combined with the fact that PSA is not standardized and may be computed in several many
+ways, makes it very difficult to compare and rest results. 
 
 ## Package Features
 - Loading and processing EEG data
@@ -58,6 +59,7 @@ freq_band
 plot_eeg 
 artifact_reject
 ```
+
 
 ## NREM Period detection 
 
