@@ -45,8 +45,7 @@ one sided, with frequencies ranging from [0, fₛ/2].
 The formula used is 
 
 ```math 
-\\left[\\frac{2|H(f)|}{\\sum_i w_i}
-
+\\frac{2|H(f)|}{\\sum_i w_i}
 ```
 
 with ``w_i`` a Hanning window.
@@ -99,13 +98,13 @@ parameter equal to ``\\frac{1}{f_s}``, canceling out the factor in the denominat
 
 If Barlett or Welch's mehtod is used (i.e. if the second constructor is used), the formula 
 becomes 
-        formula = "1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ( fₛ ∑  wᵢ² ) ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
+
 
 ```math 
 \\frac{1}{M \\varphi} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
 ```
 
-where ``\\varphi`` is an optional normalization factor defined by the `normalization` parameter (defaults to 1).
+where ``w_1, \\ldots, w_n`` a Hanning window, ``M`` the number of segments, ``H_i(f)`` the FFT of the ``i``th segment of the signal, and ``\\varphi`` an optional normalization factor defined by the `normalization` parameter (defaults to 1).
 
 # Fields
 - `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
