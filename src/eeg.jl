@@ -23,6 +23,7 @@ eeg_data = EEG("path/to/edf_data/data.edf", 30, staging_vector)
 
 # Alternatively, if no stage data exists, it is safe to do 
 eeg_data = EEG("path/to/edf_data/data.edf", 30, [])
+```
 """
 mutable struct EEG
     signals::Dict{String,Vector{<:AbstractFloat}}
@@ -93,6 +94,8 @@ function epoch(eeg::EEG, n::Integer, channel::String)
 end
 
 """
+`epoch(eeg::EEG, n::Integer, m::Integer, channel::String)`
+
 Returns a vector [x₁, …, xₖ] with all values of the signal `channel` in the epochs `n, n+1, …, m`.
 """
 function epoch(eeg::EEG, n::Integer, m::Integer, channel::String)

@@ -42,6 +42,15 @@ end
 Structure for amplitude spectrum estimations. Estimations are by default 
 one sided, with frequencies ranging from [0, fₛ/2].
 
+The formula used is 
+
+```math 
+\\left[\\frac{2|H(f)|}{\\sum_i w_i}
+
+```
+
+with ``w_i`` a Hanning window.
+
 # Fields
 
 - freq::Vector{<:AbstractFloat}: Frequency range of the spectrum
@@ -86,7 +95,7 @@ The default formula is
 
 with ``w_i`` a Hanning window. This means the estimation is normalized by 
 the sampling rate by default. This can be changed by setting the normalization 
-parameter equal to ``\frac{1}{f_s}``, canceling out the factor in the denominator. 
+parameter equal to ``\\frac{1}{f_s}``, canceling out the factor in the denominator. 
 
 If Barlett or Welch's mehtod is used (i.e. if the second constructor is used), the formula 
 becomes 
