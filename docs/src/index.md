@@ -5,9 +5,9 @@
 > Developed at the [Laboratory for the Study of
 > Sleep Slow-wave activity](https://www.med.upenn.edu/slowwavelab/)
 
-> The Gods of the earth and sea 
-> Sought thro' Nature to find this Tree,
-> But their search was all in vain:
+> The Gods of the earth and sea\
+> Sought thro' Nature to find this Tree,\
+> But their search was all in vain:\
 > There grows one in the Human Brain.
 > 
 >  William Blake
@@ -61,22 +61,30 @@ artifact_reject
 
 ## NREM Period detection 
 
+#### NREM period definition
+
 Following [Feinberg & Floyed](https://pubmed.ncbi.nlm.nih.gov/220659/) and
 Dijk, a NREM period is a sequence of epochs satisfying the following two
 conditions:
 
 - It starts with stages 2, 3 or 4. 
-- It contains at least 15 minutes of stages 2, 3 or 4 exist in total (not necessarily continuously).
+- It contains at least 15 minutes of stages 2, 3 or 4 exist in total.
 - It ends with either $a.$ at least 5 minutes of REM or $b.$ at least 5 minutes
   of wakefulness. 
 
-The sequence is allowed to contain ocurrences of REM sleep or wakefulness, as
-long as their duration is inferior to 5 minutes. Naturally, the epochs
-corresponding to these occurrences will not be signaled as NREM.
+The sequence is allowed to contain ocurrences of REM sleep or wakefulness 
+in between, but the epochs corresponding to these occurrences will not be
+signaled as NREM. For example, in a stage sequence of the form
+
+$$\ldots ~ \text{ 10 minutes of 2}  ~ \text{A minute of REM} ~ \text{5 minutes of 3} ~ \text{5 minutes of REM} $$
+
+the NREM period consists of the first 10 minutes of stage 2 and the 5 minutes of stage 3, ignoring the 1 minute of REM in-between them.
 
 Importantly, the restriction that ending REM periods must last at least 5
 minutes is not imposed when detecting the first and the last NREM period in a
 night of sleep.
+
+#### NREM detection algorithm
 
 Let $n$ be the number of epochs corresponding to $15$ minutes and $m$ the
 number of epochs corresponding to $5$ minutes. (In 30 second epohcs, $n = 30, m
@@ -96,7 +104,7 @@ decomposed into
 
 $$\alpha = \psi_1 \phi_1 \psi_2 \phi_2 \ldots \psi_k \phi_k \psi_{k+1}$$
 
-where ``\\phi_i = \\varphi_i (5^m5^* + 6^m6^*)`` and ``\\varphi_i \\in U``.
+where $\phi_i = \varphi_i (5^m5^* + 6^m6^*)$ and $\varphi_i \in U$.
 Such a decomposition readily provides the number of NREM periods in the EEG
 (i.e. ``k``). Furthermore, the epochs which comprise these periods are easily
 inferable from the decomposition.
@@ -139,21 +147,17 @@ each of the NREM periods of a sleep EEG. We will use the C3 channel.
 ```julia
 # First, import the package
 using EEGToolkit 
-using CSV
 
-# Assuming we have the stage data in a .csv
-staging = CSV.read("my_staging_data.csv")
+# Assuming we have the stage data in a .csv and we have some function 
+# to read CSVs (e.g. from the CSV package)
+staging = some_function_to_read_csv("my_staging_data.csv")
 
-# We read an EEG that has channels C3-A2 and F3-A1
+# We read an EEG that has channels C3-A2 and F3-A1. We assume the CSV had a 
+# column called STAGES with the stages of each epoch.
 eeg = EEG(edf_file, staging.STAGES)
 
 # Detect the NREM periods
 nrems = nrem(eeg)
-
-# Filter the EEG 
-eeg.signals["C3-A2"] = filt(digitalfilter(Lowpass(70, fs=eeg.fs), Butterworth(4)), eeg.signals["C3-A2"] )
-eeg.signals["C3-A2"] = filt(digitalfilter(Highpass(0.3, fs=eeg.fs), Butterworth(4)), eeg.signals["C3-A2"] )
-eeg.signals["C3-A2"] = filt(digitalfilter(Bandstop(50, 70, fs=eeg.fs), Butterworth(4)), eeg.signals["C3-A2"] )
 
 # Split the C3 signal into 30-second windows (not-overlapping).
 epochs = overlaps(eeg.signals["C3-A2"], eeg.fs * 30 * 30, 0)
@@ -161,9 +165,12 @@ epochs = overlaps(eeg.signals["C3-A2"], eeg.fs * 30 * 30, 0)
 mean_delta_powers = []
 for nrem_period in nrems
     # Extract the portion of the signal corresponding to this NREM period
-    nrem_epohcs = epochs[nrem_period]
+    nrem_epochs = epochs[nrem_period]
+
     # Compute its spectrogram. (Observation: This is an example of when it's useful to be 
     # able to pass a vector argument to the Spectrogram constructor.)
+    # The spectrogram of each epoch is computed with 5-sec windows wth a 0.5 
+    # overlap.
     spec = Spectrogram(nrem_epochs, eeg.fs, eeg.fs*5 - 1, 0.5)
 
     # Extract delta band (0.5 to 3.9 Hz) from the spectrogram.
@@ -171,9 +178,11 @@ for nrem_period in nrems
 
     # Compute the mean power in this delta band
     mean_delta_power = mean(delta_band, dims=2) 
+
+    # Store the result in the mean_delta_powers list.
     push!(mean_delta_powers, mean_delta_power)
 end
 
 # Now the ith element in `mean_delta_powers` is the mean delta power 
-of the ith NREM period.
+# of the ith NREM period.
 ```
