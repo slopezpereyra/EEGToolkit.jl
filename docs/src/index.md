@@ -129,6 +129,7 @@ relative_spindle_power
 ```
 
 ## Power spectral analysis
+
 ```@docs
 AmplitudeSpectrum
 PSD
@@ -142,7 +143,9 @@ next_power_of_two
 zero_pad 
 ```
 
-## Example
+## Examples
+
+#### NREM delta power
 
 This is an example script for computing the mean ``\delta`` (delta) power in
 each of the NREM periods of a sleep EEG. We will use the C3 channel.
@@ -189,3 +192,34 @@ end
 # Now the ith element in `mean_delta_powers` is the mean delta power 
 # of the ith NREM period.
 ```
+
+#### Power spectrum examples
+
+```julia 
+
+S = Spectrogram(signal, eeg.fs, 3, 0.5) # Compute spectrogram with 3 second segments and 0.5 segment overlap.
+p = plot_spectrogram(S, 30.0, 2) # Plot the spectrogram with limit frequency 30.0; type 2 plot = surface plot.
+```
+
+![Image](./assets/spetrogram_plot.png)
+
+Alternatively, 
+
+```julia
+p = plot_spectrogram(S, 30.0, 1, :inferno) # Color scheme inferno is better for heatmap
+```
+
+![Image](./assets/spetrogram_hplot.png) 
+
+To recover the exact formula used, 
+
+```julia
+
+julia> psd.formula
+
+"1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ∑  wᵢ² ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
+```
+
+
+
+
