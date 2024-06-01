@@ -25,16 +25,32 @@ This package has three aims in mind:
 - Transparency
 - Efficiency
 
-*Simplicity* means that a scientist with little programming background should
-be able to use it. *Transparency* means that any methodology implemented by the
-package should be transparent enough so as to be reported in a scientific
-paper.  *Efficiency* means that large EEGs (e.g. sleep EEGs) should be
-processed and analyzed in minutes or less.
+*Simplicity* means that a person with little programming background should be
+able to use it, at least with the documentation at hand. *Transparency* means
+that any methodology implemented by the package should be accessible enough so
+as to be reported in a scientific paper.  *Efficiency* means that large EEGs
+(e.g. sleep EEGs) should be processed and analyzed in minutes or less.
 
-*Transparency* affects primarily spectral analysis (PSA). Most packages (e.g. the
-`gsignal` package in R) do not report how power spectrum analysis is done.
-Proprietary software is even less clear. This, combined with the fact that PSA is not standardized and may be computed in several many
-ways, makes it very difficult to compare and rest results. 
+*Transparency* affects primarily power spectral analysis (PSA). Most packages 
+don't report how PSA is done. Proprietary software is typically even more
+obscure. Combined with the fact that PSA is not standardized and may be
+computed in several many ways, this makes it very difficult to compare and rest
+results. 
+
+--- 
+
+> This package is free software— free as in freedom. You are free to use the
+> code as you wish and for any purpose. You are free to study how the software
+> works and change it to make it do what you wish. You are free to redistribute
+> copies of this package to help others. You are free to distribute copies you
+> any modified version of this package. 
+>
+> Proprietary software hinders the liberty of its users. In science, it
+> outright obscures the scientific process and makes replication and
+> collaboration difficult. If you are a scientist, use free software whenever possible.
+
+---
+
 
 ## Package Features
 - Loading and processing EEG data
