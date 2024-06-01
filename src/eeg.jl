@@ -91,7 +91,7 @@ Returns a vector [x₁, …, xₖ] with all values of the signal `channel` in th
 """
 function epoch(eeg::EEG, n::Integer, channel::String)
     signal = eeg.signals[channel]
-    bounds = epoch(eeg, n, eeg.sampling_rates[channel])
+    bounds = epoch(eeg, n)
     signal[bounds[1]:bounds[2]]
 end
 
@@ -102,7 +102,7 @@ Returns a vector [x₁, …, xₖ] with all values of the signal `channel` in th
 """
 function epoch(eeg::EEG, n::Integer, m::Integer, channel::String)
     signal = eeg.signals[channel]
-    bounds = epoch(eeg, n, m, eeg.sampling_rates[channel])
+    bounds = epoch(eeg, n, m)
     signal[bounds[1]:bounds[2]]
 end
 
