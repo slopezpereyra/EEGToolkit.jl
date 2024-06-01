@@ -59,30 +59,28 @@ end
 
 
 """
-`epoch(eeg::EEG, n::Integer, fs::Integer=-1)`
+`epoch(eeg::EEG, n::Integer)`
 
 Returns a vector [i₁, …, iₖ] with all indexes corresponding to the `n`th epoch of the EEG.
 The default sampling rate is used to compute the indexes.
 """
-function epoch(eeg::EEG, n::Integer, fs::Integer=-1)
-    fs = (fs == -1) ? eeg.fs : fs
-    return [((n - 1) * fs * eeg.epoch_length) + 1, n * fs * eeg.epoch_length]
+function epoch(eeg::EEG, n::Integer)
+    return [((n - 1) * eeg.fs * eeg.epoch_length) + 1, n * eeg.fs * eeg.epoch_length]
 end
 
 """
-`epoch(eeg::EEG, n::Integer, m::Integer, fs::Integer=-1)`
+`epoch(eeg::EEG, n::Integer, m::Integer)`
 
 Returns a vector [i₁, …, iₖ] with all indexes corresponding to epochs `n, n+1, …, m` of the EEG.
 The default sampling rate is used to compute the indexes.
 """
-function epoch(eeg::EEG, n::Integer, m::Integer, fs::Integer=-1)
+function epoch(eeg::EEG, n::Integer, m::Integer)
     if (n == m)
         return epoch(eeg, n)
     end
     if (n > m)
         throw(ArgumentError("The second epoch should be greater than the first."))
     end
-    fs = (fs == -1) ? eeg.fs : fs
     return [((n - 1) * eeg.fs * eeg.epoch_length) + 1, m * eeg.fs * eeg.epoch_length]
 end
 
