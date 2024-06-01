@@ -65,7 +65,7 @@ mutable struct AmplitudeSpectrum
     spectrum::Vector{<:AbstractFloat}
     formula::String
 
-    function AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)
+    function AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer=0)
         N = length(x)
         hann = hanning(N) # Hanning window
         x = x .* hann
@@ -81,6 +81,7 @@ mutable struct AmplitudeSpectrum
     end
 
 end
+
 
 """
 Structure for PSD estimations. Estimations are by default 
@@ -276,7 +277,7 @@ end
 
 Zero-pads a numeric vector `v` to a `desired_length`
 """
-function zero_pad(v::Vector{<:AbstractFloat}, desired_length::Integer) where {T}
+function zero_pad(v::Vector{T}, desired_length::Integer) where {T<:AbstractFloat}
     current_length = length(v)
     if current_length == desired_length
         return v

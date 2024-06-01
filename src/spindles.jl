@@ -25,7 +25,7 @@ threshold recommended in the original paper is ``\\lambda = 4.5``.
 """
 function sigma_index(x::Vector{<:AbstractFloat}, fs::Integer)
     segs = overlaps(x, fs, 0)
-    amps = map(x -> AmplitudeSpectrum(x, fs, 512), segs)
+    amps = map(x -> AmplitudeSpectrum(x, fs), segs)
 
     # Helper function `f`: Applys function `g` to the amplitude spectrum in a given 
     # frequency band.

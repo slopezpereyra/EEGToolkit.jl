@@ -211,14 +211,6 @@ p = plot_spectrogram(S, 30.0, 1, :inferno) # Color scheme inferno is better for 
 
 ![Image](./assets/spetrogram_hplot.png) 
 
-To recover the exact formula used, 
-
-```julia
-
-julia> psd.formula
-
-"1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ∑  wᵢ² ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
-```
 
 
 
