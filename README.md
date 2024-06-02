@@ -10,13 +10,26 @@ A scientific package for computational EEG analysis with an
 emphasis on methodological transparency. Current features:
 
 - EEG Computational Toolkit
-    - Loading EEG data
-    - EEG visualization
-    - Sleep stage handling and NREM period detection
-    - Power spectral analysis
-    - Spindle detection algorithms
+- Loading EEG data
+- EEG visualization
+- Sleep stage handling and NREM period detection
+- Power spectral analysis
+- Spindle detection algorithms
 
 Read the documentation and find examples [here](https://slopezpereyra.github.io/EEGToolkit.jl/dev/).
+
+To install this package, use the standard package REPL approach.
+
+```
+(@v1.8) pkg> add EEGToolkit
+```
+
+Alternatively,
+
+```
+> using Pkg 
+> Pkg.add("EEGToolkit")
+```
 
 
 
