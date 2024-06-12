@@ -1,6 +1,6 @@
 using EDF
 using Plots
-include("src/ts.jl") 
+include("ts.jl") 
 
 """
 A struct representing EEG data with associated metadata.
