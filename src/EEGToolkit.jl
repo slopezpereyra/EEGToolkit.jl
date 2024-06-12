@@ -1,16 +1,14 @@
 module EEGToolkit
 
+export TimeSeries
+export gen_time_domain 
+export segment
 
 export EEG
 export epoch 
-export gen_time_domain 
-export plot_eeg
-export plot_eeg_overlay
-export get_stage_indexes
-export get_stage 
+export filter_by_stage
 export artifact_reject
 
-export overlaps 
 export AmplitudeSpectrum 
 export PSD 
 export Spectrogram

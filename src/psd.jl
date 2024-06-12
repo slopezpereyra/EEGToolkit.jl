@@ -1,40 +1,6 @@
 using FFTW
 using DSP
-
-"""
-`overlaps(v::Vector{T}, L::Int, overlap_frac::Union{Float64,Int}) where {T}`
-
-Splits a vector `v` into segments of length `L` with an overlap `overlap_frac` expressed as a fraction of L. 
-"""
-function overlaps(v::Vector{T}, L::Int, overlap_frac::Union{Float64,Int}) where {T}
-    if L > length(v)
-        throw(ArgumentError("Segment length L must be less than or equal to the length of the vector."))
-    end
-
-    if overlap_frac < 0 || overlap_frac >= 1.0
-        throw(ArgumentError("Overlap fraction must be in the range [0, 1)."))
-    end
-
-    D = L * overlap_frac
-    M = Int(ceil((length(v) - L) / (L - D)))
-
-    segments = Vector{Vector{T}}(undef, M)
-    step = Int(floor((1 - overlap_frac) * L))  # Calculate step size
-
-    for i in 1:M
-        start_idx = 1 + (i - 1) * step
-        end_idx = start_idx + L - 1
-
-        # Ensure the last segment does not exceed the length of the vector
-        if end_idx > length(v)
-            break
-        end
-
-        segments[i] = v[start_idx:end_idx]
-    end
-
-    return segments
-end
+include("ts.jl")
 
 
 
@@ -59,7 +25,7 @@ with ``w_i`` a Hanning window.
 # Constructors
 `AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)` : Computes a direct PSD over a signal `x` with a given `sampling_rate`.
 """
-mutable struct AmplitudeSpectrum
+struct AmplitudeSpectrum
 
     freq::Vector{<:AbstractFloat}
     spectrum::Vector{<:AbstractFloat}
@@ -165,7 +131,7 @@ struct PSD
         end
 
         hann = hanning(L)
-        segs = overlaps(x, L, overlap)
+        segs = segment(x, L, overlap)
         M = length(segs)
         w = sum(map(x -> H(x, hann, L), segs)) ./ (M * normalization)   # Hans uses denominator 2 * M * length(segs[1])
         w = pow2db.(w)
@@ -206,7 +172,7 @@ struct Spectrogram
         inner_window_length::Integer, inner_overlap::AbstractFloat, normalization::Union{AbstractFloat,Integer}=1,
         pad::Integer=0)
 
-        segs = overlaps(signal, segment_length, overlap)
+        segs = segment(signal, segment_length, overlap)
         psds = map(x -> PSD(x, fs, inner_window_length, inner_overlap, normalization, pad), segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
