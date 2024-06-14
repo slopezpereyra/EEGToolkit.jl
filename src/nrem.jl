@@ -1,5 +1,6 @@
 include("eeg.jl")
 
+# O(n)
 function insert_spaces_on_change(str)
     # Initialize an empty string to build the modified version
     modified_str = ""
@@ -19,6 +20,7 @@ function insert_spaces_on_change(str)
     return modified_str
 end
 
+# O(n) + O(n) + O(n) = O(n)
 function stage_to_word(stages)
 
     # Given a stages s₁, ..., sₙ, produces a sentence s.t. each word 

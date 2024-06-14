@@ -61,7 +61,6 @@ results.
 
 ## Time series
 
-## EEG
 
 ```@docs
 TimeSeries
@@ -69,6 +68,9 @@ segment
 epoch
 gen_time_domain
 ```
+
+## EEG
+
 
 ```@docs
 EEG

@@ -1,6 +1,5 @@
 using FFTW
 using DSP
-include("ts.jl")
 
 
 

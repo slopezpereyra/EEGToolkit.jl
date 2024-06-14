@@ -7,7 +7,6 @@ A struct representing EEG data with associated metadata.
 
 # Fields
 - `signals::Dict{String, TimeSeries}`: A dictionary mapping signal labels (strings) to arrays of floating-point values.
-- `fs::Integer`: A default sampling rate that will be used for calculations. Defaults to the maximum sampling rate among all signals.
 - `staging::Vector{String}`: A vector of stage labels corresponding to each epoch.
 - `id::String`: An identifier for the EEG.
 
