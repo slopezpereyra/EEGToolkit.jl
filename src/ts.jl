@@ -11,7 +11,11 @@ A struct representing time series data.
 struct TimeSeries 
     x::Vector{<:AbstractFloat}
     fs::Integer 
-    epoch_length::Integer = 30
+    epoch_length::Integer
+
+    function TimeSeries(x::Vector{<:AbstractFloat}, fs::Integer)
+        TimeSeries(x, fs, 30)
+    end
 end
 
 """
