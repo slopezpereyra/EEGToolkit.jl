@@ -6,12 +6,12 @@ A struct representing time series data.
 # Fields
 - `x::Vector{<:AbstractFloat}`: Time series data.
 - `fs::Integer`: Sampling rate.
-- `epoch_length::Integer`: Length in seconds understood to comprise an epoch.
+- `epoch_length::Integer`: Length in seconds understood to comprise an epoch (defaults to 30).
 """
 struct TimeSeries 
     x::Vector{<:AbstractFloat}
     fs::Integer 
-    epoch_length::Integer
+    epoch_length::Integer = 30
 end
 
 """
@@ -62,7 +62,7 @@ end
 """
 `gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer})`
 
-Given an TimeSeries signal, generates the time vector t₁, …, tₙ corresponding to 
+Given an TimeSeries, generates the time vector t₁, …, tₙ corresponding to 
 the signal from time `s` to `e` in seconds.
 """
 function gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer})
