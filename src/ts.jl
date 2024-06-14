@@ -19,7 +19,7 @@ end
 
 Splits a vector `v` into segments of length `L` with an overlap `overlap_frac` expressed as a fraction of L. 
 """
-function segment(v::Vector{T}, L::Int, overlap_frac::Union{Float64,Int}) where {T}
+function segment(v::Vector, L::Int, overlap_frac::Union{Float64,Int})
     if L > length(v)
         throw(ArgumentError("Segment length L must be less than or equal to the length of the vector."))
     end
