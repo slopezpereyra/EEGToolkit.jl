@@ -12,10 +12,6 @@ struct TimeSeries
     x::Vector{<:AbstractFloat}
     fs::Integer 
     epoch_length::Integer
-
-    function TimeSeries(x::Vector{<:AbstractFloat}, fs::Integer)
-        TimeSeries(x, fs, 30)
-    end
 end
 
 """
@@ -23,7 +19,7 @@ end
 
 Splits a vector `v` into segments of length `L` with an overlap `overlap_frac` expressed as a fraction of L. 
 """
-function segment(v::Vector, L::Int, overlap_frac::Union{Float64,Int})
+function segment(v::Vector{T}, L::Int, overlap_frac::Union{Float64,Int}) where {T}
     if L > length(v)
         throw(ArgumentError("Segment length L must be less than or equal to the length of the vector."))
     end
