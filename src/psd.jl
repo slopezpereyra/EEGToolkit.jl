@@ -150,12 +150,12 @@ with frequencies ranging from [0, fₛ/2]. The signal is split into possibly ove
 windows of length L; within each window, a PSD method is used to compute the 
 PSD with overlapping windows. 
 
-The spectrogram is a matrix ``S^{M \times F}`` where ``M`` is the number of windows and 
+The spectrogram is a matrix ``S^{M \\times F}`` where ``M`` is the number of windows and 
 ``F`` is the length of the spectrum vector in any given window (i.e. the number of 
 frequencies or the frequency resolution). 
 
 Let ``f_1, f_2, \\ldots, f_k`` be a strictly increasing sequence of
-frequencies. Assume columns these frequencies correspond to the column indexes
+frequencies. Assume these frequencies correspond to the column indexes
 ``c_1, c2, \\ldots, c_k`` of ``S``. Then the mean power in the frequency range 
 ``[f_1, f_k]`` is
 
