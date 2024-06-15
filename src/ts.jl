@@ -18,7 +18,9 @@ end
 `segment(v::Vector{T}, L::Int, overlap::Union{Float64,Int}) where {T}`
 
 Splits a vector `v` into segments of length `L` with an overlap `overlap` expressed as a fraction of L. The `overlap` defaults to `0` (no overlap).
-Importantly, the function always attempts to capture the whole vector, even if the final split is not of length L. For example, 
+Returns a vector ``v`` of vectors - i.e. Vector{Vector{T}} - with each ``\\vec{v\_i}`` is the ``i``th segment.
+
+The function always attempts to capture the whole vector, even if the final split is not of length L. For example, 
 
 ```julia
 > x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
@@ -43,21 +45,30 @@ Set `symmetric=true` to ensure that, if this occurs, the last split is dropped.
  [7, 8, 9]
 ```
 
+If `L` is equal to the segment length, `segment` raises a warning
+and returns the original vector. This is unsafe -hence the warning-
+because the return type for this particular case is Vector{T} -
+whereas in all other cases it is Vector{Vector{T}}.
 """
 function segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=false) where {T}
     if L > length(v)
         throw(ArgumentError("Segment length L must be less than or equal to the length of the vector."))
     end
 
+    if L == length(v)
+        @warn("In the `segment` function, the length `L` of each segment was set to the length of `v`. Returning `v`.")
+        return(v)
+    end
+
     if overlap < 0 || overlap >= 1.0
         throw(ArgumentError("Overlap fraction must be in the range [0, 1)."))
     end
 
-    D = L * overlap
-    step = Int(floor((1 - overlap) * L))  # Calculate step size
+    # Step size
+    step = Int(floor(L - L * overlap))  # Calculate step size
     
-    # Calculate M correctly by ensuring it covers the whole vector
-    M = max(1, Int(ceil((length(v) - L) / step)) + 1)
+    # Calculate number of segments
+    M = Int(ceil((length(v) - L) / step)) + 1
     segments = Vector{Vector{T}}(undef, M)
 
     for i in 1:M
