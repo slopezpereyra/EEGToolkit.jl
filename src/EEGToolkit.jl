@@ -13,9 +13,11 @@ export AmplitudeSpectrum
 export PSD 
 export Spectrogram
 export plot_spectrogram 
+export plot_psd
 export next_power_of_two 
 export zero_pad 
 export freq_band 
+export mean_band_power 
 
 export nrem
 

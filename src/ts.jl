@@ -15,48 +15,83 @@ struct TimeSeries
 end
 
 """
-`segment(v::Vector{T}, L::Int, overlap_frac::Union{Float64,Int}) where {T}`
+`segment(v::Vector{T}, L::Int, overlap::Union{Float64,Int}) where {T}`
 
-Splits a vector `v` into segments of length `L` with an overlap `overlap_frac` expressed as a fraction of L. 
+Splits a vector `v` into segments of length `L` with an overlap `overlap` expressed as a fraction of L. The `overlap` defaults to `0` (no overlap).
+Importantly, the function always attempts to capture the whole vector, even if the final split is not of length L. For example, 
+
+```julia
+> x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+> segment(x, 5)
+2-element Vector{Vector{Float64}}:
+[1, 2, 3, 4, 5]
+[6, 7, 8, 9, 0]
+
+ > segment(x, 7)
+2-element Vector{Vector{Float64}}:
+ [1, 2, 3, 4, 5, 6, 7]
+ [8, 9, 0]
+```
+
+Set `symmetric=true` to ensure that, if this occurs, the last split is dropped.
+
+```julia
+> segment(x, 3; symmetric=true)
+3-element Vector{Vector{Float64}}:
+ [1, 2, 3]
+ [4, 5, 6]
+ [7, 8, 9]
+```
+
 """
-function segment(v::Vector{T}, L::Int, overlap_frac::Union{Float64,Int}) where {T}
+function segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=false) where {T}
     if L > length(v)
         throw(ArgumentError("Segment length L must be less than or equal to the length of the vector."))
     end
 
-    if overlap_frac < 0 || overlap_frac >= 1.0
+    if overlap < 0 || overlap >= 1.0
         throw(ArgumentError("Overlap fraction must be in the range [0, 1)."))
     end
 
-    D = L * overlap_frac
-    M = Int(ceil((length(v) - L) / (L - D)))
-
+    D = L * overlap
+    step = Int(floor((1 - overlap) * L))  # Calculate step size
+    
+    # Calculate M correctly by ensuring it covers the whole vector
+    M = max(1, Int(ceil((length(v) - L) / step)) + 1)
     segments = Vector{Vector{T}}(undef, M)
-    step = Int(floor((1 - overlap_frac) * L))  # Calculate step size
 
     for i in 1:M
         start_idx = 1 + (i - 1) * step
         end_idx = start_idx + L - 1
 
         # Ensure the last segment does not exceed the length of the vector
-        if end_idx > length(v)
+        if start_idx > length(v)
             break
+        end
+        if end_idx > length(v)
+            end_idx = length(v)
         end
 
         segments[i] = v[start_idx:end_idx]
     end
 
-    return segments
+    # Filter out any undefined segments
+    res = filter(!isnothing, segments)
+    if symmetric && length( last(res) ) != L
+        pop!(res)
+    end
+    
+    return(res)
 end
 
 """
-`segment(ts::TimeSeries, L::Int, overlap_frac::Union{Float64, Int})`
+`segment(ts::TimeSeries, L::Int, overlap::Union{Float64, Int})`
 
 Splits the vector `ts.x` of a `TimeSeries` `ts` into segments of length `L`
-with an overlap `overlap_frac` expressed as a fraction of L. 
+with an overlap `overlap` expressed as a fraction of L. 
 """
-function segment(ts::TimeSeries, L::Int, overlap_frac::Union{Float64, Int})
-    segment(ts.x, L, overlap_frac)
+function segment(ts::TimeSeries, L::Int; kargs...)
+    segment(ts.x, L; kargs...)
 end
 
 """

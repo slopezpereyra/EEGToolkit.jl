@@ -151,10 +151,11 @@ relative_spindle_power
 ```@docs
 AmplitudeSpectrum
 PSD
+plot_psd
 Spectrogram
-
 plot_spectrogram
 freq_band 
+mean_band_power
 ```
 
 ## Helpers
@@ -183,31 +184,35 @@ staging = some_function_to_read_csv("my_staging_data.csv")
 # column called STAGES with the stages of each epoch.
 eeg = EEG(edf_file, staging.STAGES)
 
+# We extract the TimeSeries object corresponding to C3-A2
+signal = eeg.signals["C3-A2"]
+
 # Detect the NREM periods
 nrems = nrem(eeg)
 
 # Split the C3 signal into 30-second windows (not-overlapping).
-epochs = overlaps(eeg.signals["C3-A2"], eeg.fs * 30 * 30, 0)
+epochs = segment(signal, signal.fs * 30)
+
+# PSD function to be used within each window in the spectrograms
+psd = x -> PSD(x, signal.fs, signal.fs * 5)
 
 mean_delta_powers = []
 for nrem_period in nrems
     # Extract the portion of the signal corresponding to this NREM period
+    # This is a vector of vectors [vector_1, ..., vector_k], with the ith 
+    # vector being the ith epoch in this NREM period.
     nrem_epochs = epochs[nrem_period]
 
-    # Compute its spectrogram. (Observation: This is an example of when it's useful to be 
-    # able to pass a vector argument to the Spectrogram constructor.)
-    # The spectrogram of each epoch is computed with 5-sec windows wth a 0.5 
-    # overlap.
-    spec = Spectrogram(nrem_epochs, eeg.fs, eeg.fs*5 - 1, 0.5)
+    # Simply to make things conceptually simpler, we convert the NREM period into a TimeSeries
+    nrem_signal = TimeSeries(vcat(nrem_epochs...), signal.fs, 30)
+    
+    # Compute spectrogram with 30sec windows using `psd` on each window.
+    spec = Spectrogram(nrem_signal, nrem_signal.fs*30, psd)
 
-    # Extract delta band (0.5 to 3.9 Hz) from the spectrogram.
-    delta_band = freq_band(spec, 0.5, 3.9)
-
-    # Compute the mean power in this delta band
-    mean_delta_power = mean(delta_band, dims=2) 
-
+    # Compute mean power in delta band (0.5 to 3.9 Hz) from the spectrogram.
+    δ = mean_band_power(spec, 0.5, 3.9)
     # Store the result in the mean_delta_powers list.
-    push!(mean_delta_powers, mean_delta_power)
+    push!(mean_delta_powers, δ)
 end
 
 # Now the ith element in `mean_delta_powers` is the mean delta power 

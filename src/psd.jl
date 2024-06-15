@@ -1,5 +1,6 @@
 using FFTW
 using DSP
+using Statistics
 
 """
 Structure for amplitude spectrum estimations. Estimations are by default 
@@ -67,7 +68,17 @@ becomes
 \\frac{1}{M \\varphi} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
 ```
 
-where ``w_1, \\ldots, w_n`` a Hanning window, ``M`` the number of segments, ``H_i(f)`` the FFT of the ``i``th segment of the signal, and ``\\varphi`` an optional normalization factor defined by the `normalization` parameter (defaults to 1).
+where ``w_1, \\ldots, w_n`` a Hanning window, ``M`` the number of segments,
+``H_i(f)`` the FFT of the ``i``th segment of the signal, and ``\\varphi`` an
+optional normalization factor defined by the `normalization` parameter
+(defaults to `2 * seg_length`). Thus, with default keyword arguments, and
+averaging across ``M`` windows with ``k`` samples each, the estimation is
+
+```math 
+\\frac{1}{M\times 2k} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
+
+To avoid any normalization, simply let ``\varphi = 1``.
+```
 
 # Fields
 - `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
@@ -110,8 +121,7 @@ struct PSD
         method = overlap > 0 ? "Welch's method" : "Barlett's method"
         formula = "1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ( fₛ ∑  wᵢ² ) ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
 
-
-        segs = segment(x, seg_length, overlap)
+        segs = segment(x, seg_length; overlap=overlap)
         M = length(segs)
         psds = map(x -> PSD(x, fs), segs)
         freq = psds[1].freq
@@ -119,7 +129,7 @@ struct PSD
 
         # Default to Hans normalization: denominator = 2 * M * length(segs[1])
         if (normalization == 1)
-            normalization = 2 * length(segs[1])
+            normalization = 2 * seg_length # seg_length = length(segs[1])
         end
         w = sum(spectrums) / (M * normalization)   
         new(freq, w, method, formula)
@@ -137,9 +147,29 @@ end
 """
 Structure for spectrogram estimation. Estimations are by default one-sided,
 with frequencies ranging from [0, fₛ/2]. The signal is split into possibly overlapping 
-windows of length L; within each window, Welch's method is used to compute the 
-PSD with overlapping windows. For Barlett's method, one can set the inner window 
-length and the overlap to zero.
+windows of length L; within each window, a PSD method is used to compute the 
+PSD with overlapping windows. 
+
+The spectrogram is a matrix ``S^{M \times F}`` where ``M`` is the number of windows and 
+``F`` is the length of the spectrum vector in any given window (i.e. the number of 
+frequencies or frequency resolution). 
+
+Thus, the ``i``th row of ``S`` is the PSD at the ``i``th time window across 
+all frequencies. Conversely, the ``j``th 
+column of ``S`` is the power at the ``j``th frequency through time.
+
+Let ``\textbf{w}_j``} be the ``j``th column vector of ``S``.
+Then the mean power at a particular frequency band ``[f_l, f_u]``
+across windows is
+
+```math
+P(l, u) = \\frac{1}{M} \\sum_{i=0}^{M}\\left[\\frac{1}{f(u) - f(l)}\\sum_{j=f(l)}^{i = f(u)} \\textbf{w}_j\\right]
+```
+
+where ``f(x) = k`` iff frequency ``x`` corresponds to the ``k``th column of ``S``. In the 
+code, ``f`` corresponds to the `freq_band` method and ``P`` to the `mean_band_power`
+method.
+
 
 # Fields
 - `time::Vector` : Time domain (x)
@@ -148,12 +178,12 @@ length and the overlap to zero.
 - `segment_length::Integer` : Length of each segment in time.
 
 # Constructors
-- `Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, segment_length::Integer, overlap::AbstractFloat, inner_window_length::Integer, inner_overlap::AbstractFloat)` : Computes the `Spectrogram` of a `signal` with sampling rate `fs` in windows of length `segment_length` (in number of samples) with a certain `overlap` ∈ [0, 1].
-Within each window, the `PSD` constructor is used to compute either a Welch or 
-a Barlett method estimation, depending on the `inner_window_length` and 
-`inner_overlap` parameters. An optional normalization factor and a zero-padding 
+- `Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, window_length::Integer, psd_function::Function; overlap::AbstractFloat = 0.5)`: Compute the spectrogram by splitting the signal into 
+potentially overlapping windows of length `window_length`. Within each window, a `psd_function` is used to compute the PSD. This function must return a `PSD` object.
+`psd_overlap` parameters. An optional normalization factor and a zero-padding 
 length can be included, as in the `PSD` constructor.
-- `Spectrogram(segs::Vector{Vector{<:AbstractFloat}}, fs::Integer, segment_length::Integer, overlap::AbstractFloat, normalization::Union{AbstractFloat,Integer}=1, pad::Integer=0)`: This constructor does not take a signal but *a split or windowed signal*. This is useful, for example, when the EEG is split into windows corresponding to a specific period (e.g. NREM epochs). In this case, each time-instance in the Spectrogram corresponds to one of the windows. Aside from this, there is no difference with the previous constructor.
+- `function Spectrogram(segs::Vector{Vector}, fs::Integer, segment_length::Integer, psd_function::Function; overlap::AbstractFloat = 0.5)`: This constructor does not take a signal but *a split or windowed signal*. This is useful, for example, when the EEG is split into windows corresponding to a specific period (e.g. NREM epochs). In this case, each time-instance in the Spectrogram corresponds to one of the windows. Aside from this, there is no difference with the previous constructor.
+- `function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)`: Simpler constructor using a `TimeSeries` object.
 """
 struct Spectrogram
 
@@ -162,12 +192,31 @@ struct Spectrogram
     spectrums::Matrix{<:AbstractFloat}
     segment_length::Integer
 
-    function Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, segment_length::Integer, overlap::AbstractFloat,
-        inner_window_length::Integer, inner_overlap::AbstractFloat, normalization::Union{AbstractFloat,Integer}=1,
-        pad::Integer=0)
+    function Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, window_length::Integer, psd_function::Function; 
+        overlap::AbstractFloat = 0.5,
+        )
 
-        segs = segment(signal, segment_length, overlap)
-        psds = map(x -> PSD(x, fs, inner_window_length, inner_overlap, normalization, pad), segs)
+        if Base.return_types(psd_function) != [PSD]
+            throw(ArgumentError("The `psd_function` should be a function with return type `PSD`"))
+        end
+
+        segs = segment(signal, window_length; overlap=overlap)
+        psds = map(psd_function, segs)
+        freq = psds[1].freq
+        spectrums = [psd.spectrum for psd in psds]
+
+        spectrogram_data = zeros(length(spectrums), length(freq))
+        for i in 1:length(spectrums)
+            spectrogram_data[i, :] = spectrums[i]
+        end
+
+        new(1:length(spectrums), freq, spectrogram_data, window_length)
+    end
+
+    # If a signal is not given, but a vector of segments (e.g. a list of epochs).
+    function Spectrogram(segs::Vector{Vector}, fs::Integer, segment_length::Integer, psd_function::Function; overlap::AbstractFloat = 0.5)
+
+        psds = map(psd_function, segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
 
@@ -178,22 +227,9 @@ struct Spectrogram
 
         new(1:length(spectrums), freq, spectrogram_data, segment_length)
     end
-
-    # If a signal is not given, but a vector of segments (e.g. a list of epochs).
-    function Spectrogram(segs, fs::Integer, segment_length::Integer, overlap::AbstractFloat,
-        normalization::Union{AbstractFloat,Integer}=1,
-        pad::Integer=0)
-
-        psds = map(x -> PSD(x, fs, segment_length, overlap, normalization, pad), segs)
-        freq = psds[1].freq
-        spectrums = [psd.spectrum for psd in psds]
-
-        spectrogram_data = zeros(length(spectrums), length(freq))
-        for i in 1:length(spectrums)
-            spectrogram_data[i, :] = spectrums[i]
-        end
-
-        new(1:length(spectrums), freq, spectrogram_data, segment_length)
+    
+    function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)
+        Spectrogram(ts.x, ts.fs, window_length, psd_function; kargs...)
     end
 end
 
@@ -205,7 +241,7 @@ Plots a spectogram `spec` either in 2d (`type = 1`) or 3d (`type = 2`). An optio
 frequency limit (`freq_lim`) may be set (defaults to 30Hz). The color palette 
 `color` may be set; defaults to `nipy_spectral`.
 """
-function plot_spectrogram(spec::Spectrogram, freq_lim::AbstractFloat=30.0, type::Int=1, color=:nipy_spectral)
+function plot_spectrogram(spec::Spectrogram; freq_lim::AbstractFloat=30.0, type::Int=1, color=:nipy_spectral)
 
     if type == 1
         return (heatmap(spec.time, spec.freq, spec.spectrums', ylims=(0, freq_lim), color=color))
@@ -216,6 +252,10 @@ function plot_spectrogram(spec::Spectrogram, freq_lim::AbstractFloat=30.0, type:
             xlabel="Time", ylabel="Frequency (Hz)", zlabel="PSD (dB)", color=color))
     end
     throw(ArgumentError("The plot `type` argument must be either 1 (for heatmap) or 2 (for a surface plot)."))
+end
+
+function plot_psd(psd::PSD; freq_lim=30.0)
+    plot(psd.freq, psd.spectrum)
 end
 
 
@@ -285,5 +325,24 @@ function freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat
     spectrum = spec.spectrums
     indexes = findall(x -> x >= lower && x <= upper, spec.freq)
     spectrum[:, indexes]
+end
+
+"""
+`freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat, window::Integer)`
+
+Given a spectrogram, returns the mean power in a given frequency band [lower, upper]. This function 
+effectively computes 
+
+```math
+P(l, u) = \\frac{1}{M} \\sum_{i=0}^{M}\\left[\\frac{1}{f(u) - f(l)}\\sum_{j=f(l)}^{i = f(u)} \\textbf{w}_j\\right]
+```
+"""
+function mean_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
+    band = freq_band(spec, lower, upper)
+    # Sum columns in band and average by number of columns; 
+    # i.e. compute a vector with a mean frequency power per time window
+    frequency_average = mean(band, dims=2) 
+    # Get the mean across time
+    mean(frequency_average)
 end
 
