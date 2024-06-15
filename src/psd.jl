@@ -76,9 +76,9 @@ averaging across ``M`` windows with ``k`` samples each, the estimation is
 
 ```math 
 \\frac{1}{M\times 2k} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
+```
 
 To avoid any normalization, simply let ``\varphi = 1``.
-```
 
 # Fields
 - `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
@@ -115,7 +115,7 @@ struct PSD
 
     function PSD(x::Vector{<:AbstractFloat}, fs::Int, seg_length::Integer;
                 overlap::Union{<:AbstractFloat,Integer} = 0.5, 
-                normalization::Union{<:AbstractFloat,Integer}=1,
+                normalization::Union{<:AbstractFloat,Integer}=-1,
                 pad::Integer=0)
 
         method = overlap > 0 ? "Welch's method" : "Barlett's method"
@@ -128,7 +128,7 @@ struct PSD
         spectrums = [psd.spectrum for psd in psds]
 
         # Default to Hans normalization: denominator = 2 * M * length(segs[1])
-        if (normalization == 1)
+        if (normalization == -1)
             normalization = 2 * seg_length # seg_length = length(segs[1])
         end
         w = sum(spectrums) / (M * normalization)   
@@ -152,23 +152,20 @@ PSD with overlapping windows.
 
 The spectrogram is a matrix ``S^{M \times F}`` where ``M`` is the number of windows and 
 ``F`` is the length of the spectrum vector in any given window (i.e. the number of 
-frequencies or frequency resolution). 
+frequencies or the frequency resolution). 
 
-Thus, the ``i``th row of ``S`` is the PSD at the ``i``th time window across 
-all frequencies. Conversely, the ``j``th 
-column of ``S`` is the power at the ``j``th frequency through time.
-
-Let ``\textbf{w}_j``} be the ``j``th column vector of ``S``.
-Then the mean power at a particular frequency band ``[f_l, f_u]``
-across windows is
+Let ``f_1, f_2, \\ldots, \\f_k`` be a strictly increasing sequence of
+frequencies. Assume columns these frequencies correspond to the column indexes
+``c_1, c2, \ldots, c_k`` of ``S``. Then the mean power in the frequency range 
+``[f\_1, f\_k]`` is
 
 ```math
-P(l, u) = \\frac{1}{M} \\sum_{i=0}^{M}\\left[\\frac{1}{f(u) - f(l)}\\sum_{j=f(l)}^{i = f(u)} \\textbf{w}_j\\right]
+\\frac{1}{M} \\sum_{i=1}^{M}\\left[\\frac{1}{c_k - c_1}\\sum_{j=c_1}^{c_k} S_{ij}\\right] = \\frac{1}{M\\big(c_k - c_1\\big)}\\sum_{i=1}^{M}\\sum_{j=c_1}^{c_k} S_{ij}
 ```
 
-where ``f(x) = k`` iff frequency ``x`` corresponds to the ``k``th column of ``S``. In the 
-code, ``f`` corresponds to the `freq_band` method and ``P`` to the `mean_band_power`
-method.
+In this package, given a frequency range ``[f_1, f_k]``, one finds ``c_1, \ldots, c_k`` 
+using the ``frequency_band`` function. On its turn, mean power in a frequency range 
+is computed with the `mean_band_power` function.
 
 
 # Fields
@@ -339,7 +336,7 @@ Given a spectrogram, returns the mean power in a given frequency band [lower, up
 effectively computes 
 
 ```math
-P(l, u) = \\frac{1}{M} \\sum_{i=0}^{M}\\left[\\frac{1}{f(u) - f(l)}\\sum_{j=f(l)}^{i = f(u)} \\textbf{w}_j\\right]
+\\frac{1}{M\\big(c_k - c_1\\big)}\\sum_{i=1}^{M}\\sum_{j=c_1}^{c_k} S_{ij}
 ```
 """
 function mean_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
