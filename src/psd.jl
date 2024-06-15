@@ -254,6 +254,11 @@ function plot_spectrogram(spec::Spectrogram; freq_lim::AbstractFloat=30.0, type:
     throw(ArgumentError("The plot `type` argument must be either 1 (for heatmap) or 2 (for a surface plot)."))
 end
 
+"""
+`plot_psd(psd::PSD; freq_lim=30.0)`
+
+Plot a PSD with x-axis being frequency and y-axis being estimated power spectrum.
+"""
 function plot_psd(psd::PSD; freq_lim=30.0)
     plot(psd.freq, psd.spectrum)
 end
