@@ -154,18 +154,16 @@ The spectrogram is a matrix ``S^{M \times F}`` where ``M`` is the number of wind
 ``F`` is the length of the spectrum vector in any given window (i.e. the number of 
 frequencies or the frequency resolution). 
 
-Let ``f_1, f_2, \\ldots, \\f_k`` be a strictly increasing sequence of
+Let ``f_1, f_2, \\ldots, f_k`` be a strictly increasing sequence of
 frequencies. Assume columns these frequencies correspond to the column indexes
-``c_1, c2, \ldots, c_k`` of ``S``. Then the mean power in the frequency range 
-``[f\_1, f\_k]`` is
+``c_1, c2, \\ldots, c_k`` of ``S``. Then the mean power in the frequency range 
+``[f_1, f_k]`` is
 
 ```math
 \\frac{1}{M} \\sum_{i=1}^{M}\\left[\\frac{1}{c_k - c_1}\\sum_{j=c_1}^{c_k} S_{ij}\\right] = \\frac{1}{M\\big(c_k - c_1\\big)}\\sum_{i=1}^{M}\\sum_{j=c_1}^{c_k} S_{ij}
 ```
 
-In this package, given a frequency range ``[f_1, f_k]``, one finds ``c_1, \ldots, c_k`` 
-using the ``frequency_band`` function. On its turn, mean power in a frequency range 
-is computed with the `mean_band_power` function.
+In this package, mean power in a frequency range is computed with the `mean_band_power` function.
 
 
 # Fields
