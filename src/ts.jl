@@ -15,10 +15,10 @@ struct TimeSeries
 end
 
 """
-`segment(v::Vector{T}, L::Int, overlap::Union{Float64,Int}) where {T}`
+`segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=false) where {T}`
 
 Splits a vector `v` into segments of length `L` with an overlap `overlap` expressed as a fraction of L. The `overlap` defaults to `0` (no overlap).
-Returns a vector ``v`` of vectors - i.e. Vector{Vector{T}} - with each ``\\vec{v\_i}`` is the ``i``th segment.
+Returns a vector ``v`` of vectors - i.e. Vector{Vector{T}} - with each ``\\vec{v_i}`` is the ``i``th segment.
 
 The function always attempts to capture the whole vector, even if the final split is not of length L. For example, 
 
