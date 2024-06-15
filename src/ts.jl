@@ -18,7 +18,7 @@ end
 `segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=false) where {T}`
 
 Splits a vector `v` into segments of length `L` with an overlap `overlap` expressed as a fraction of L. The `overlap` defaults to `0` (no overlap).
-Returns a vector ``v`` of vectors - i.e. Vector{Vector{T}} - with each ``\\vec{v_i}`` is the ``i``th segment.
+Returns a vector ``v`` of vectors - i.e. `Vector{Vector{T}}` - with ``\\vec{v_i}`` the ``i``th segment in the split.
 
 The function always attempts to capture the whole vector, even if the final split is not of length L. For example, 
 
@@ -47,8 +47,8 @@ Set `symmetric=true` to ensure that, if this occurs, the last split is dropped.
 
 If `L` is equal to the segment length, `segment` raises a warning
 and returns the original vector. This is unsafe -hence the warning-
-because the return type for this particular case is Vector{T} -
-whereas in all other cases it is Vector{Vector{T}}.
+because the return type for this particular case is `Vector{T}` -
+whereas in all other cases it is `Vector{Vector{T}}`.
 """
 function segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=false) where {T}
     if L > length(v)
