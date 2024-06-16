@@ -109,7 +109,6 @@ struct PSD
         freq = [i for i in 0:(length(ft)-1)] .* fs / N
         normalization = 1 / (sum(hann .^ 2) * norm_factor)
         spectrum = 2 * ft * normalization
-        spectrum = pow2db.(spectrum)
         new(freq, spectrum, "Direct (no segmentation)", "2|H(f)|² / ( ∑ wᵢ² * fₛ )  with  w₁, …, wₗ a Hanning window")
     end
 
