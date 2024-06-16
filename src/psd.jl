@@ -115,6 +115,7 @@ struct PSD
     function PSD(x::Vector{<:AbstractFloat}, fs::Int, seg_length::Integer;
                 overlap::Union{<:AbstractFloat,Integer} = 0.5, 
                 normalization::Union{<:AbstractFloat,Integer}=-1,
+                inner_normalization::Union{<:AbstractFloat, Integer}=1,
                 pad::Integer=0)
 
         method = overlap > 0 ? "Welch's method" : "Barlett's method"
@@ -122,7 +123,7 @@ struct PSD
 
         segs = segment(x, seg_length; overlap=overlap, symmetric=true)
         M = length(segs)
-        psds = map(x -> PSD(x, fs), segs)
+        psds = map(x -> PSD(x, fs; norm_factor=inner_normalization), segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
 
