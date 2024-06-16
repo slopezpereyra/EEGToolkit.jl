@@ -180,7 +180,7 @@ In this package, mean power in a frequency range is computed with the `mean_band
 - `segment_length::Integer` : Length of each segment in time.
 
 # Constructors
-- `Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}`: Given a sequence of windows ``w_1, \ldots, w_k`` contained in the `segs` argument, computes the PSD within each window using 
+- `Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}`: Given a sequence of windows ``w_1, \\ldots, w_k`` contained in the `segs` argument, computes the PSD within each window using 
 a custom `psd_function`. 
 - `Spectrogram(signal::Vector{<:AbstractFloat}, window_length::Integer, psd_function::Function; overlap::Union{AbstractFloat, Integer}=0, dB=false)`: Splits a signal into (potentially overlapping) segments of length `window_length` and computes the `Spectrogram`
 over this windowing using the first constructor. A custom `psd_function` is used within each window. Symmetry is enforced over the split signal, meaning that if the last segment is of length not equal to the rest, it is dropped. Thus, all windows 
