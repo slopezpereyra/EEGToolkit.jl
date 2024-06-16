@@ -210,7 +210,7 @@ struct Spectrogram
     end
 
     # If a signal is not given, but a vector of segments (e.g. a list of epochs).
-    function Spectrogram(segs::Vector{<:Vector{Float32}}, psd_function::Function)
+    function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function) where {T<:AbstractFloat}
 
         psds = map(psd_function, segs)
         freq = psds[1].freq

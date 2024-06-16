@@ -60,10 +60,22 @@ end
 """
 `artifact_reject(signal::TimeSeries, anom_matrix::Matrix)`
 
-Given an TimeSeries and a 2x2 matrix associating epoch-subepoch pairs with artifacts, 
-returns a new TimeSeries with all sub-epochs containing artifacts removed.
+An artifact or anomaly matrix ``A^{n \\times 2}`` is a matrix that marks the time-position of the 
+``n`` artifacts in an EEG. Each row of ``A`` is of the form ``(e, s)`` with ``e`` an 
+epoch and ``s`` a sub-epoch. This implies an artifact exists in the ``s``th 
+sub-epoch of the ``e``th epoch.
+
+This function takes a `TimeSeries` signal and an anomaly matrix ``A``.
+It removes from the signal the epoch-subepoch pairs containing 
+artifacts. In particular, this function returns a 
+`Vector{Vector{T}}` with `T<:AbstractFloat`. Thus, if 
+`result` holds the return value of this function, `result[i]`
+contains what is left from the `i`th epoch after removing
+its contaminated sub-epochs. It is possible that `result[i]` is 
+empty.
 """
 function artifact_reject(signal::TimeSeries, anom_matrix::Matrix)
+    T = typeof(signal.x[1])
     epochs = segment(signal, signal.fs * signal.epoch_length; symmetric=true)
     windows = map(e -> segment(e, signal.fs * 5; symmetric=true), epochs)
     for epoch in unique(anom_matrix[:, 1])
@@ -71,5 +83,5 @@ function artifact_reject(signal::TimeSeries, anom_matrix::Matrix)
         subeps = anom_matrix[:, 2][epoch_indexes]
         deleteat!(windows[epoch], sort(subeps))
     end
-    [vcat(window...) for window in windows]
+    [Vector{T}( vcat(window...) ) for window in windows]
 end
