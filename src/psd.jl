@@ -97,7 +97,7 @@ struct PSD
     method::String
     formula::String
 
-    function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1)
+    function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=true)
         N = length(x)
         hann = hanning(N) # Hanning window
         x = x .* hann
@@ -109,6 +109,9 @@ struct PSD
         freq = [i for i in 0:(length(ft)-1)] .* fs / N
         normalization = 1 / (sum(hann .^ 2) * norm_factor)
         spectrum = 2 * ft * normalization
+        if dB 
+            spectrum = pow2db.(spectrum)
+        end
         new(freq, spectrum, "Direct (no segmentation)", "2|H(f)|² / ( ∑ wᵢ² * fₛ )  with  w₁, …, wₗ a Hanning window")
     end
 
@@ -116,14 +119,15 @@ struct PSD
                 overlap::Union{<:AbstractFloat,Integer} = 0.5, 
                 normalization::Union{<:AbstractFloat,Integer}=-1,
                 inner_normalization::Union{<:AbstractFloat, Integer}=1,
-                pad::Integer=0)
+                pad::Integer=0; 
+                dB = true)
 
         method = overlap > 0 ? "Welch's method" : "Barlett's method"
         formula = "1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ( fₛ ∑  wᵢ² ) ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
 
         segs = segment(x, seg_length; overlap=overlap, symmetric=true)
         M = length(segs)
-        psds = map(x -> PSD(x, fs; norm_factor=inner_normalization), segs)
+        psds = map(x -> PSD(x, fs; norm_factor=inner_normalization, dB=false), segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
 
@@ -132,6 +136,9 @@ struct PSD
             normalization = 2 * seg_length # seg_length = length(segs[1])
         end
         w = sum(spectrums) / (M * normalization)   
+        if dB 
+            w = pow2db.(w)
+        end
         new(freq, w, method, formula)
     end
 
@@ -188,7 +195,7 @@ struct Spectrogram
     segment_length::Integer
 
     function Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, window_length::Integer, psd_function::Function; 
-        overlap::AbstractFloat = 0.5,
+        overlap::AbstractFloat = 0.5, dB=true
         )
 
         if Base.return_types(psd_function) != [PSD]
@@ -204,20 +211,33 @@ struct Spectrogram
         for i in 1:length(spectrums)
             spectrogram_data[i, :] = spectrums[i]
         end
+        
+        if dB 
+            spectrogram_data = pow2db.(spectrogram_data)
+        end
 
         new(1:length(spectrums), freq, spectrogram_data, window_length)
     end
 
     # If a signal is not given, but a vector of segments (e.g. a list of epochs).
-    function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function) where {T<:AbstractFloat}
+    function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = true) where {T<:AbstractFloat}
+
+        if Base.return_types(psd_function) != [PSD]
+            throw(ArgumentError("The `psd_function` should be a function with return type `PSD`"))
+        end
 
         psds = map(psd_function, segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
 
+
         spectrogram_data = zeros(length(spectrums), length(freq))
         for i in 1:length(spectrums)
             spectrogram_data[i, :] = spectrums[i]
+        end
+        
+        if dB 
+            spectrogram_data = pow2db.(spectrogram_data)
         end
 
         new(1:length(spectrums), freq, spectrogram_data, length(segs[1]))
