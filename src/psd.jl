@@ -97,7 +97,7 @@ struct PSD
     method::String
     formula::String
 
-    function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=true)
+    function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)
         N = length(x)
         hann = hanning(N) # Hanning window
         x = x .* hann
@@ -119,15 +119,15 @@ struct PSD
                 overlap::Union{<:AbstractFloat,Integer} = 0.5, 
                 normalization::Union{<:AbstractFloat,Integer}=-1,
                 inner_normalization::Union{<:AbstractFloat, Integer}=1,
-                pad::Integer=0; 
-                dB = true)
+                pad::Integer=0,
+                dB = false)
 
         method = overlap > 0 ? "Welch's method" : "Barlett's method"
         formula = "1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ( fₛ ∑  wᵢ² ) ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
 
         segs = segment(x, seg_length; overlap=overlap, symmetric=true)
         M = length(segs)
-        psds = map(x -> PSD(x, fs; norm_factor=inner_normalization, dB=false), segs)
+        psds = map(x -> PSD(x, fs; norm_factor=inner_normalization), segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
 
@@ -195,7 +195,7 @@ struct Spectrogram
     segment_length::Integer
 
     function Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, window_length::Integer, psd_function::Function; 
-        overlap::AbstractFloat = 0.5, dB=true
+        overlap::AbstractFloat = 0.5, dB=false
         )
 
         if Base.return_types(psd_function) != [PSD]
@@ -220,7 +220,7 @@ struct Spectrogram
     end
 
     # If a signal is not given, but a vector of segments (e.g. a list of epochs).
-    function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = true) where {T<:AbstractFloat}
+    function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}
 
         if Base.return_types(psd_function) != [PSD]
             throw(ArgumentError("The `psd_function` should be a function with return type `PSD`"))
