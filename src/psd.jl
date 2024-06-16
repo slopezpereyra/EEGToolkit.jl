@@ -87,9 +87,13 @@ To avoid any normalization, simply let ``\varphi = 1``.
 - `formula::String` : A string representation of the formula used for the estimation.
 
 # Constructors
-- `PSD(x::Vector, sampling_rate::Integer, pad::Integer = 0)`: Computes a direct PSD over a signal `x` with a given `sampling_rate`.
-- `PSD(x::Vector, fs::Int, L::Int, overlap::Union{ <:AbstractFloat, Integer }, normalization::Union{ <:AbstractFloat, Integer } = 1)`: Splits the signal `x` into segments of length L with an `overlap` in [0, 1). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. If `overlap` is zero, this results in Barlett's method. If `overlap` is greater than zero, this results in Welch's method. If `pad` is zero no zero-padding is done. If `pad` is greater than zero, each segment is zero-padded to a  length of `pad`. 
-- `PSD(ts::TimeSeries)`: Splits the signal `x` into segments of length L with an `overlap` in [0, 1). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. If `overlap` is zero, this results in Barlett's method. If `overlap` is greater than zero, this results in Welch's method. If `pad` is zero no zero-padding is done. If `pad` is greater than zero, each segment is zero-padded to a  length of `pad`. 
+- `PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)`: Computes a direct PSD over a signal `x` with sampling rate `fs`. The signal may be padded to an optional length `pad`.
+An optional normalization factor `norm_factor` may be used. Set `dB` to true to transform the spectrum to decibels.
+- `PSD(x::Vector, fs::Int, seg_length::Int; overlap::Union{ <:AbstractFloat, Integer }=0.5, normalization::Union{ <:AbstractFloat, Integer } = -1, inner_normalization::Union{<:AbstractFloat, Integer}=1, pad::Integer=0, dB=false)`: 
+Splits the signal `x` into segments of length `seg_length` with an `overlap` in [0, 1) (defaults to 0.5). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments.
+The estimation within each segment is done with the first `PSD` constructor and may be normalized with the `inner_normalization` argument. The segment-averaged estimation is normalized with a `normalization` that defaults to ``2MM'``, where `M` is the number of segments and `M'` is the number of samples in each segment (i.e. `seg_length`). Setting `overlap` to zero equates to using Barlett's method. Setting `overlap` greater than zero equates to using Welch's method. 
+- `PSD(ts::TimeSeries; kargs...)` : Wrapper to apply the first constructor to a TimeSeries signal.
+- `PSD(ts::TimeSeries, seg_length::Integer; kargs...)`: Wrapper to apply the second constructor (Welch or Barlett's method) to a TimeSeries signal.
 """
 struct PSD
     freq::Vector{<:AbstractFloat}
@@ -152,16 +156,12 @@ struct PSD
 end
 
 """
-Structure for spectrogram estimation. Estimations are by default one-sided,
-with frequencies ranging from [0, fₛ/2]. The signal is split into possibly overlapping 
-windows of length L; within each window, a PSD method is used to compute the 
-PSD with overlapping windows. 
+A spectrogram is a matrix ``S^{M \\times F}`` where ``M`` is the number of windows in 
+the windowing of a signal and ``F`` is the length of the spectrum vector in any given window (i.e. the frequency resolution). It is useful to observe spectral changes in time or to compute the 
+spectrum of time-regions of interest (e.g. only NREM periods in a sleep EEG). The information 
+available in direct PSD can be inferred from the spectrogram with ease.
 
-The spectrogram is a matrix ``S^{M \\times F}`` where ``M`` is the number of windows and 
-``F`` is the length of the spectrum vector in any given window (i.e. the number of 
-frequencies or the frequency resolution). 
-
-Let ``f_1, f_2, \\ldots, f_k`` be a strictly increasing sequence of
+For instance, let ``f_1, f_2, \\ldots, f_k`` be a strictly increasing sequence of
 frequencies. Assume these frequencies correspond to the column indexes
 ``c_1, c2, \\ldots, c_k`` of ``S``. Then the mean power in the frequency range 
 ``[f_1, f_k]`` is
@@ -180,12 +180,12 @@ In this package, mean power in a frequency range is computed with the `mean_band
 - `segment_length::Integer` : Length of each segment in time.
 
 # Constructors
-- `Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, window_length::Integer, psd_function::Function; overlap::AbstractFloat = 0.5)`: Compute the spectrogram by splitting the signal into 
-potentially overlapping windows of length `window_length`. Within each window, a `psd_function` is used to compute the PSD. This function must return a `PSD` object.
-`psd_overlap` parameters. An optional normalization factor and a zero-padding 
-length can be included, as in the `PSD` constructor.
-- `function Spectrogram(segs::Vector{Vector}, fs::Integer, segment_length::Integer, psd_function::Function; overlap::AbstractFloat = 0.5)`: This constructor does not take a signal but *a split or windowed signal*. This is useful, for example, when the EEG is split into windows corresponding to a specific period (e.g. NREM epochs). In this case, each time-instance in the Spectrogram corresponds to one of the windows. Aside from this, there is no difference with the previous constructor.
-- `function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)`: Simpler constructor using a `TimeSeries` object.
+- `Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}`: Given a sequence of windows ``w_1, \ldots, w_k`` contained in the `segs` argument, computes the PSD within each window using 
+a custom `psd_function`. 
+- `Spectrogram(signal::Vector{<:AbstractFloat}, window_length::Integer, psd_function::Function; overlap::Union{AbstractFloat, Integer}=0, dB=false)`: Splits a signal into (potentially overlapping) segments of length `window_length` and computes the `Spectrogram`
+over this windowing using the first constructor. A custom `psd_function` is used within each window. Symmetry is enforced over the split signal, meaning that if the last segment is of length not equal to the rest, it is dropped. Thus, all windows 
+are of equal length.
+- `function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)`: Wrapper constructor for a `TimeSeries` object.
 """
 struct Spectrogram
 
@@ -194,42 +194,19 @@ struct Spectrogram
     spectrums::Matrix{<:AbstractFloat}
     segment_length::Integer
 
-    function Spectrogram(signal::Vector{<:AbstractFloat}, fs::Integer, window_length::Integer, psd_function::Function; 
-        overlap::AbstractFloat = 0.5, dB=false
-        )
-
-        if Base.return_types(psd_function) != [PSD]
-            throw(ArgumentError("The `psd_function` should be a function with return type `PSD`"))
-        end
-
-        segs = segment(signal, window_length; overlap=overlap)
-        psds = map(psd_function, segs)
-        freq = psds[1].freq
-        spectrums = [psd.spectrum for psd in psds]
-
-        spectrogram_data = zeros(length(spectrums), length(freq))
-        for i in 1:length(spectrums)
-            spectrogram_data[i, :] = spectrums[i]
-        end
-        
-        if dB 
-            spectrogram_data = pow2db.(spectrogram_data)
-        end
-
-        new(1:length(spectrums), freq, spectrogram_data, window_length)
-    end
-
-    # If a signal is not given, but a vector of segments (e.g. a list of epochs).
     function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}
 
         if Base.return_types(psd_function) != [PSD]
             throw(ArgumentError("The `psd_function` should be a function with return type `PSD`"))
         end
 
+        if length(unique(length.(segs))) != 1 
+            throw(ArgumentError("The lengths of the windows are not all equal. If you are using the `segment` function to create the windows, make sure to use it with `symmetric=true`."))
+        end
+
         psds = map(psd_function, segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
-
 
         spectrogram_data = zeros(length(spectrums), length(freq))
         for i in 1:length(spectrums)
@@ -241,6 +218,11 @@ struct Spectrogram
         end
 
         new(1:length(spectrums), freq, spectrogram_data, length(segs[1]))
+    end
+
+    function Spectrogram(signal::Vector{<:AbstractFloat}, window_length::Integer, psd_function::Function; overlap::Union{<:AbstractFloat, Integer}=0, dB=false)
+        segs = segment(signal, window_length; overlap=overlap, symmetric=true)
+        Spectrogram(segs, psd_function; dB=dB)
     end
     
     function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)

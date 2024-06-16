@@ -51,7 +51,7 @@ value ensures type-safety but the warning is raised because
 splitting a vector over its very length is potentially 
 due to programming errors.
 """
-function segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=false) where {T}
+function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0, symmetric=false) where {T}
     if L > length(v)
         throw(ArgumentError("Segment length L must be less than or equal to the length of the vector."))
     end
