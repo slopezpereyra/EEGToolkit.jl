@@ -97,7 +97,7 @@ struct PSD
     method::String
     formula::String
 
-    function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0)
+    function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1)
         N = length(x)
         hann = hanning(N) # Hanning window
         x = x .* hann
@@ -107,7 +107,7 @@ struct PSD
         ft = abs2.(fft(x))
         ft = ft[1:(div(N, 2)+1)] # Make one sided
         freq = [i for i in 0:(length(ft)-1)] .* fs / N
-        normalization = 1 / (sum(hann .^ 2) * fs)
+        normalization = 1 / (sum(hann .^ 2) * norm_factor)
         spectrum = 2 * ft * normalization
         spectrum = pow2db.(spectrum)
         new(freq, spectrum, "Direct (no segmentation)", "2|H(f)|² / ( ∑ wᵢ² * fₛ )  with  w₁, …, wₗ a Hanning window")
@@ -116,13 +116,12 @@ struct PSD
     function PSD(x::Vector{<:AbstractFloat}, fs::Int, seg_length::Integer;
                 overlap::Union{<:AbstractFloat,Integer} = 0.5, 
                 normalization::Union{<:AbstractFloat,Integer}=-1,
-                pad::Integer=0,
-                symmetric=false)
+                pad::Integer=0)
 
         method = overlap > 0 ? "Welch's method" : "Barlett's method"
         formula = "1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ( fₛ ∑  wᵢ² ) ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
 
-        segs = segment(x, seg_length; overlap=overlap, symmetric=symmetric)
+        segs = segment(x, seg_length; overlap=overlap, symmetric=true)
         M = length(segs)
         psds = map(x -> PSD(x, fs), segs)
         freq = psds[1].freq
