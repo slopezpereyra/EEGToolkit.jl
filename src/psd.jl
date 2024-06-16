@@ -200,10 +200,6 @@ struct Spectrogram
             throw(ArgumentError("The `psd_function` should be a function with return type `PSD`"))
         end
 
-        if length(unique(length.(segs))) != 1 
-            throw(ArgumentError("The lengths of the windows are not all equal. If you are using the `segment` function to create the windows, make sure to use it with `symmetric=true`."))
-        end
-
         psds = map(psd_function, segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
