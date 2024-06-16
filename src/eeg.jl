@@ -58,27 +58,18 @@ function filter_by_stage(eeg::EEG, channel::String, stages::Vector)
 end
 
 """
-`artifact_reject(eeg::EEG, anom_matrix::Matrix, signal::String)`
+`artifact_reject(signal::TimeSeries, anom_matrix::Matrix)`
 
-Given an EEG, a 2x2 matrix associating epoch-subepoch pairs with artifacts, and a signal,
-returns a subset of the signal with all sub-epochs containing artifacts removed.
-
-The signal is split in epoch-length windows and each window is split in subepoch-length 
-windows; the matrix gives the epoch and subepoch indexes to be removed. 
+Given an TimeSeries and a 2x2 matrix associating epoch-subepoch pairs with artifacts, 
+returns a new TimeSeries with all sub-epochs containing artifacts removed.
 """
 function artifact_reject(signal::TimeSeries, anom_matrix::Matrix)
-    epochs = segment(signal.x, signal.fs * 30, 0)
-    windows = map(x -> segment(signal.x, signal.fs * 5, 1 / (signal.fs * 5)), epochs)
+    epochs = segment(signal, signal.fs * signal.epoch_length; symmetric=true)
+    windows = map(e -> segment(e, signal.fs * 5; symmetric=true), epochs)
     for epoch in unique(anom_matrix[:, 1])
-        if epoch > length(windows)
-            @warn("Anomaly was found on final epoch, which does not belong to the segmentation\n")
-            continue
-        end
-        subeps_indexes = findall(x -> x == epoch, anom_matrix[:, 1])
-        subeps = anom_matrix[:, 2][subeps_indexes]
+        epoch_indexes = findall(x -> x == epoch, anom_matrix[:, 1])
+        subeps = anom_matrix[:, 2][epoch_indexes]
         deleteat!(windows[epoch], sort(subeps))
     end
-    clean = map(x -> vcat(x...), windows)
-    return clean
+    [vcat(window...) for window in windows]
 end
-

@@ -116,12 +116,13 @@ struct PSD
     function PSD(x::Vector{<:AbstractFloat}, fs::Int, seg_length::Integer;
                 overlap::Union{<:AbstractFloat,Integer} = 0.5, 
                 normalization::Union{<:AbstractFloat,Integer}=-1,
-                pad::Integer=0)
+                pad::Integer=0,
+                symmetric=false)
 
         method = overlap > 0 ? "Welch's method" : "Barlett's method"
         formula = "1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ( fₛ ∑  wᵢ² ) ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
 
-        segs = segment(x, seg_length; overlap=overlap)
+        segs = segment(x, seg_length; overlap=overlap, symmetric=symmetric)
         M = length(segs)
         psds = map(x -> PSD(x, fs), segs)
         freq = psds[1].freq
@@ -209,7 +210,7 @@ struct Spectrogram
     end
 
     # If a signal is not given, but a vector of segments (e.g. a list of epochs).
-    function Spectrogram(segs::Vector{Vector}, fs::Integer, segment_length::Integer, psd_function::Function; overlap::AbstractFloat = 0.5)
+    function Spectrogram(segs::Vector{Vector}, psd_function::Function)
 
         psds = map(psd_function, segs)
         freq = psds[1].freq
@@ -220,7 +221,7 @@ struct Spectrogram
             spectrogram_data[i, :] = spectrums[i]
         end
 
-        new(1:length(spectrums), freq, spectrogram_data, segment_length)
+        new(1:length(spectrums), freq, spectrogram_data, length(segs[1]))
     end
     
     function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)

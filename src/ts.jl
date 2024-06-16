@@ -46,9 +46,10 @@ Set `symmetric=true` to ensure that, if this occurs, the last split is dropped.
 ```
 
 If `L` is equal to the segment length, `segment` raises a warning
-and returns the original vector. This is unsafe -hence the warning-
-because the return type for this particular case is `Vector{T}` -
-whereas in all other cases it is `Vector{Vector{T}}`.
+and returns a vector with only the original vector. The return 
+value ensures type-safety but the warning is raised because 
+splitting a vector over its very length is potentially 
+due to programming errors.
 """
 function segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=false) where {T}
     if L > length(v)
@@ -57,7 +58,7 @@ function segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=
 
     if L == length(v)
         @warn("In the `segment` function, the length `L` of each segment was set to the length of `v`. Returning `v`.")
-        return(v)
+        return [v]
     end
 
     if overlap < 0 || overlap >= 1.0
