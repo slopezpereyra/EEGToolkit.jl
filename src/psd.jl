@@ -24,7 +24,6 @@ with ``w_i`` a Hanning window.
 `AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)` : Computes a direct PSD over a signal `x` with a given `sampling_rate`.
 """
 struct AmplitudeSpectrum
-
     freq::Vector{<:AbstractFloat}
     spectrum::Vector{<:AbstractFloat}
     formula::String
@@ -53,32 +52,33 @@ one sided, with frequencies ranging from [0, fₛ/2].
 The default formula is 
 
 ```math 
-\\frac{2|H(f)|^2}{f_s \\sum_i w_i^2}
+\\frac{2|H(f)|^2}{\\zeta \\sum_i w_i^2}
 ```
 
-with ``w_i`` a Hanning window. This means the estimation is normalized by 
-the sampling rate by default. This can be changed by setting the normalization 
-parameter equal to ``\\frac{1}{f_s}``, canceling out the factor in the denominator. 
+with ``w_i`` a Hanning window and ``\\zeta`` a normalization factor which defaults 
+to ``1``.  
 
-If Barlett or Welch's mehtod is used (i.e. if the second constructor is used), the formula 
+Barlett or Welch's mehtod can be used, where the formula 
 becomes 
 
 
 ```math 
-\\frac{1}{M \\varphi} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
+\\frac{1}{M \\varphi} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{\\zeta \\sum_i w_i^2} \\right]
 ```
 
 where ``w_1, \\ldots, w_n`` a Hanning window, ``M`` the number of segments,
-``H_i(f)`` the FFT of the ``i``th segment of the signal, and ``\\varphi`` an
-optional normalization factor defined by the `normalization` parameter
-(defaults to `2 * seg_length`). Thus, with default keyword arguments, and
-averaging across ``M`` windows with ``k`` samples each, the estimation is
+``H_i(f)`` the FFT of the ``i``th segment of the signal, and ``\\varphi`` and ``\\zeta``
+normalization factors defaulting to `2 * seg_length` and `1`. In the 
+function arguments, ``\\varphi`` corresponds to the `normalization` argument 
+and ``\\zeta`` to the `inner_normalization` argument. 
+
+Thus, the default estimation over ``M`` windows with ``k`` samples each is
 
 ```math 
-\\frac{1}{M\times 2k} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
+\\frac{1}{M\\times 2k} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
 ```
 
-To avoid any normalization, simply let ``\varphi = 1``.
+To avoid any normalization, simply let ``\\varphi = 1``.
 
 # Fields
 - `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
@@ -87,11 +87,8 @@ To avoid any normalization, simply let ``\varphi = 1``.
 - `formula::String` : A string representation of the formula used for the estimation.
 
 # Constructors
-- `PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)`: Computes a direct PSD over a signal `x` with sampling rate `fs`. The signal may be padded to an optional length `pad`.
-An optional normalization factor `norm_factor` may be used. Set `dB` to true to transform the spectrum to decibels.
-- `PSD(x::Vector, fs::Int, seg_length::Int; overlap::Union{ <:AbstractFloat, Integer }=0.5, normalization::Union{ <:AbstractFloat, Integer } = -1, inner_normalization::Union{<:AbstractFloat, Integer}=1, pad::Integer=0, dB=false)`: 
-Splits the signal `x` into segments of length `seg_length` with an `overlap` in [0, 1) (defaults to 0.5). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments.
-The estimation within each segment is done with the first `PSD` constructor and may be normalized with the `inner_normalization` argument. The segment-averaged estimation is normalized with a `normalization` that defaults to ``2MM'``, where `M` is the number of segments and `M'` is the number of samples in each segment (i.e. `seg_length`). Setting `overlap` to zero equates to using Barlett's method. Setting `overlap` greater than zero equates to using Welch's method. 
+- `PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)`: Computes a direct PSD over a signal `x` with sampling rate `fs`. The signal may be padded to an optional length `pad`. An optional normalization factor `norm_factor` may be used. Set `dB` to true to transform the spectrum to decibels.
+- `PSD(x::Vector, fs::Int, seg_length::Int; overlap::Union{ <:AbstractFloat, Integer }=0.5, normalization::Union{ <:AbstractFloat, Integer } = -1, inner_normalization::Union{<:AbstractFloat, Integer}=1, pad::Integer=0, dB=false)`: Splits the signal `x` into segments of length `seg_length` with an `overlap` in [0, 1) (defaults to 0.5). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. The estimation within each segment is done with the first `PSD` constructor and may be normalized with the `inner_normalization` argument. The segment-averaged estimation is normalized with a `normalization` that defaults to ``2MM'``, where `M` is the number of segments and `M'` is the number of samples in each segment (i.e. `seg_length`). Setting `overlap` to zero equates to using Barlett's method. Setting `overlap` greater than zero equates to using Welch's method. 
 - `PSD(ts::TimeSeries; kargs...)` : Wrapper to apply the first constructor to a TimeSeries signal.
 - `PSD(ts::TimeSeries, seg_length::Integer; kargs...)`: Wrapper to apply the second constructor (Welch or Barlett's method) to a TimeSeries signal.
 """
@@ -163,7 +160,7 @@ available in direct PSD can be inferred from the spectrogram with ease.
 
 For instance, let ``f_1, f_2, \\ldots, f_k`` be a strictly increasing sequence of
 frequencies. Assume these frequencies correspond to the column indexes
-``c_1, c2, \\ldots, c_k`` of ``S``. Then the mean power in the frequency range 
+``c_1, c_2, \\ldots, c_k`` of ``S``. Then the mean power in the frequency range 
 ``[f_1, f_k]`` is
 
 ```math
@@ -174,17 +171,14 @@ In this package, mean power in a frequency range is computed with the `mean_band
 
 
 # Fields
-- `time::Vector` : Time domain (x)
-- `freq::Vector{<:AbstractFloat}`: Frequency domain (y)
-- `spectrums::Matrix{<:AbstractFloat}`: Power spectrum (z). Rows are time and columns are frequency.
+- `time::Vector` : Time domain 
+- `freq::Vector{<:AbstractFloat}`: Frequency domain 
+- `spectrums::Matrix{<:AbstractFloat}`: Power spectrum. Rows are time and columns are frequency; the value in `spectrums[row, freq]` is the power at time window `row` for frequency `freq`.
 - `segment_length::Integer` : Length of each segment in time.
 
 # Constructors
-- `Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}`: Given a sequence of windows ``w_1, \\ldots, w_k`` contained in the `segs` argument, computes the PSD within each window using 
-a custom `psd_function`. 
-- `Spectrogram(signal::Vector{<:AbstractFloat}, window_length::Integer, psd_function::Function; overlap::Union{AbstractFloat, Integer}=0, dB=false)`: Splits a signal into (potentially overlapping) segments of length `window_length` and computes the `Spectrogram`
-over this windowing using the first constructor. A custom `psd_function` is used within each window. Symmetry is enforced over the split signal, meaning that if the last segment is of length not equal to the rest, it is dropped. Thus, all windows 
-are of equal length.
+- `Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}`: Given a sequence of windows ``w_1, \\ldots, w_k`` contained in the `segs` argument, computes the PSD within each window using a custom `psd_function`. 
+- `Spectrogram(signal::Vector{<:AbstractFloat}, window_length::Integer, psd_function::Function; overlap::Union{AbstractFloat, Integer}=0, dB=false)`: Splits a signal into (potentially overlapping) segments of length `window_length` and computes the `Spectrogram` over this windowing using the first constructor. A custom `psd_function` is used within each window. Symmetry is enforced over the split signal, meaning that if the last segment is of length not equal to the rest, it is dropped. Thus, all windows are of equal length.
 - `function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)`: Wrapper constructor for a `TimeSeries` object.
 """
 struct Spectrogram
@@ -254,13 +248,14 @@ Plot a PSD with x-axis being frequency and y-axis being estimated power spectrum
 """
 function plot_psd(psd::PSD; freq_lim=30.0)
     plot(psd.freq, psd.spectrum)
+    xlims!(0, freq_lim)
 end
 
 
 """
 `next_power_of_two(n::Int)`
 
-Given an integer `n`, finds the least m = 2ᵏ s.t. m ≥ n.
+Given an integer ``n``, finds the least ``m = 2^k`` s.t. ``m \\geq n``. 
 """
 function next_power_of_two(n::Int)
     p = 1
@@ -271,7 +266,7 @@ function next_power_of_two(n::Int)
 end
 
 """
-`zero_pad(v::Vector{<:AbstractFloat}, desired_length::Integer) where {T}`
+`zero_pad(v::Vector{T}, desired_length::Integer) where {T<:AbstractFloat}`
 
 Zero-pads a numeric vector `v` to a `desired_length`
 """
@@ -281,7 +276,7 @@ function zero_pad(v::Vector{T}, desired_length::Integer) where {T<:AbstractFloat
         return v
     end
     if desired_length < current_length
-        throw(ArgumentError("Cannot zero-pad to a length inferior to the vector's length"))
+        throw(ArgumentError("Cannot zero-pad to a length inferior to the original vector's length"))
     end
     padded_vector = zeros(T, desired_length)
     padded_vector[1:current_length] = v
@@ -293,7 +288,7 @@ end
 """
 `freq_band(spec::Union{PSD,AmplitudeSpectrum}, lower::AbstractFloat, upper::AbstractFloat)`
 
-Given a PSD, returns a Vector{AbstractFloat} with the powers within the frequency band [lower, upper].
+Given a `PSD` or `AmplitudeSpectrum`, returns a `Vector{<:AbstractFloat}` with the powers within the frequency band `[lower, upper]`.
 """
 function freq_band(spec::Union{PSD,AmplitudeSpectrum}, lower::AbstractFloat, upper::AbstractFloat)
     indexes = findall(x -> x >= lower && x <= upper, spec.freq)
@@ -304,7 +299,7 @@ end
 """
 `freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat, window::Integer)`
 
-Given a spectrogram, returns a Vector{<:AbstractFloat} with the powers within a frequency band [lower, upper]
+Given a `Spectrogram`, returns a `Vector{<:AbstractFloat}` with the powers within a frequency band `[lower, upper]`
 of a specific window (row of the spectrogram).
 """
 function freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat, window::Integer)
@@ -316,8 +311,8 @@ end
 """
 `freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
 
-Given a spectrogram, returns a Matrix{<:AbstractFloat} with the powers within a frequency band [lower, upper]
-across all windows.
+Given a `Spectrogram`, returns a `Matrix{<:AbstractFloat}` with the powers within a frequency band [lower, upper]
+across all time windows.
 """
 function freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
     spectrum = spec.spectrums
@@ -328,7 +323,7 @@ end
 """
 `freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat, window::Integer)`
 
-Given a spectrogram, returns the mean power in a given frequency band [lower, upper]. This function 
+Given a ``, returns the mean power in a given frequency band `[lower, upper]`. This function 
 effectively computes 
 
 ```math
@@ -342,5 +337,16 @@ function mean_band_power(spec::Spectrogram, lower::AbstractFloat, upper::Abstrac
     frequency_average = mean(band, dims=2) 
     # Get the mean across time
     mean(frequency_average)
+end
+
+"""
+`freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat, window::Integer)`
+
+Given a `PSD`, returns the mean power in a given frequency band `[lower, upper]`. 
+
+"""
+function mean_band_power(spec::PSD, lower::AbstractFloat, upper::AbstractFloat)
+    band = freq_band(spec, lower, upper)
+    mean(band)
 end
 

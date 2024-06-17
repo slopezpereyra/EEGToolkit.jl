@@ -203,11 +203,8 @@ for nrem_period in nrems
     # vector being the ith epoch in this NREM period.
     nrem_epochs = epochs[nrem_period]
 
-    # Simply to make things conceptually simpler, we convert the NREM period into a TimeSeries
-    nrem_signal = TimeSeries(vcat(nrem_epochs...), signal.fs, 30)
-    
-    # Compute spectrogram with 30sec windows using `psd` on each window.
-    spec = Spectrogram(nrem_signal, nrem_signal.fs*30, psd)
+    # Compute spectrogram with each window being an epoch of this nrem period.
+    spec = Spectrogram(nrem_epochs, nrem_signal.fs*30, psd)
 
     # Compute mean power in delta band (0.5 to 3.9 Hz) from the spectrogram.
     δ = mean_band_power(spec, 0.5, 3.9)
@@ -218,26 +215,4 @@ end
 # Now the ith element in `mean_delta_powers` is the mean delta power 
 # of the ith NREM period.
 ```
-
-#### Power spectrum examples
-
-```julia 
-
-S = Spectrogram(signal, eeg.fs, 3, 0.5) # Compute spectrogram with 3 second segments and 0.5 segment overlap.
-p = plot_spectrogram(S, 30.0, 2) # Plot the spectrogram with limit frequency 30.0; type 2 plot = surface plot.
-```
-
-![Image](./assets/spetrogram_plot.png)
-
-Alternatively, 
-
-```julia
-p = plot_spectrogram(S, 30.0, 1, :inferno) # Color scheme inferno is better for heatmap
-```
-
-![Image](./assets/spetrogram_hplot.png) 
-
-
-
-
 

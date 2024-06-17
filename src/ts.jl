@@ -6,16 +6,29 @@ A struct representing time series data.
 # Fields
 - `x::Vector{<:AbstractFloat}`: Time series data.
 - `fs::Integer`: Sampling rate.
+- `secs::AbstractFloat`: Duration in seconds.
+- `mins::AbstractFloat`: Duration in minutes.
+- `hours::AbstractFloat`: Duration in hours.
 - `epoch_length::Integer`: Length in seconds understood to comprise an epoch (defaults to 30).
 """
 struct TimeSeries 
     x::Vector{<:AbstractFloat}
     fs::Integer 
+    secs::AbstractFloat
+    mins::AbstractFloat
+    hours::AbstractFloat
     epoch_length::Integer
+
+    function TimeSeries(x, fs; epoch_length=30)
+        secs = length(x)/fs
+        mins = secs/60
+        hours = mins/60
+        new(x, fs, secs, mins, hours, epoch_length)
+    end
 end
 
 """
-`segment(v::Vector{T}, L::Int; overlap::Union{Float64,Int}=0, symmetric=false) where {T}`
+`segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0, symmetric=false) where {T}`
 
 Splits a vector `v` into segments of length `L` with an overlap `overlap` expressed as a fraction of L. The `overlap` defaults to `0` (no overlap).
 Returns a vector ``v`` of vectors - i.e. `Vector{Vector{T}}` - with ``\\vec{v_i}`` the ``i``th segment in the split.
@@ -25,12 +38,12 @@ The function always attempts to capture the whole vector, even if the final spli
 ```julia
 > x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 > segment(x, 5)
-2-element Vector{Vector{Float64}}:
-[1, 2, 3, 4, 5]
-[6, 7, 8, 9, 0]
+2-element Vector{Vector{Int64}}:
+ [1, 2, 3, 4, 5]
+ [6, 7, 8, 9, 0]
 
  > segment(x, 7)
-2-element Vector{Vector{Float64}}:
+2-element Vector{Vector{Int64}}:
  [1, 2, 3, 4, 5, 6, 7]
  [8, 9, 0]
 ```
@@ -39,21 +52,24 @@ Set `symmetric=true` to ensure that, if this occurs, the last split is dropped.
 
 ```julia
 > segment(x, 3; symmetric=true)
-3-element Vector{Vector{Float64}}:
+3-element Vector{Vector{Int64}}:
  [1, 2, 3]
  [4, 5, 6]
  [7, 8, 9]
 ```
 
 If `L` is equal to the segment length, `segment` raises a warning
-and returns a vector with only the original vector. The return 
-value ensures type-safety but the warning is raised because 
-splitting a vector over its very length is potentially 
-due to programming errors.
+and returns a vector with only the original vector: `[v]`. 
+The return value ensures type-safety but the warning is raised because 
+splitting a vector over its length is potentially 
+a programming mistake.
 """
 function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0, symmetric=false) where {T}
     if L > length(v)
         throw(ArgumentError("Segment length L must be less than or equal to the length of the vector."))
+    end
+    if overlap < 0 || overlap >= 1.0
+        throw(ArgumentError("Overlap fraction must be in the range [0, 1)."))
     end
 
     if L == length(v)
@@ -61,9 +77,6 @@ function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0
         return [v]
     end
 
-    if overlap < 0 || overlap >= 1.0
-        throw(ArgumentError("Overlap fraction must be in the range [0, 1)."))
-    end
 
     # Step size
     step = Int(floor(L - L * overlap))  # Calculate step size
@@ -97,10 +110,10 @@ function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0
 end
 
 """
-`segment(ts::TimeSeries, L::Int, overlap::Union{Float64, Int})`
+`segment(ts::TimeSeries, L::Int; kargs...)`
 
-Splits the vector `ts.x` of a `TimeSeries` `ts` into segments of length `L`
-with an overlap `overlap` expressed as a fraction of L. 
+Wrapper to segment the vector `ts.x` in the time 
+series `ts`.
 """
 function segment(ts::TimeSeries, L::Int; kargs...)
     segment(ts.x, L; kargs...)

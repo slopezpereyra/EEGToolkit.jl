@@ -3,28 +3,27 @@ include("psd.jl")
 """
 `function sigma_index(x::Vector{<:AbstractFloat}, fs::Integer)`
 
-The ``\\Sigma``-index algorithm [(Huupponen et al.,
-2007)](https://pubmed.ncbi.nlm.nih.gov/17555950/)
-find spindles by detecting abnormally high amplitudes values among the spindle frequency
-band. Per each 1 second window of the EEG,
+The ``\\sigma``-index algorithm [(Huupponen et al.,
+2007)](https://pubmed.ncbi.nlm.nih.gov/17555950/) find abnormally high amplitude values in the spindle frequency
+band. Per each 1 second window of the EEG, it computes
 
-- the maximum amplitude in the spindle frequency, which we call ``S_{max}``
+- the maximum amplitude in the spindle frequency band, which we call ``S_{max}``
 - the average amplitude in the low alpha and theta frequencies, which we call
 ``\\alpha_{mean}, \\theta_{mean}``
 - the maximum alpha amplitude ``\\alpha_{max}``
 
-are all computed. The ``\\Sigma``-index is defined to be zero if ``\\alpha_max > S_{max}``,
+The ``\\sigma``-index of each window is defined to be zero if ``\\alpha_max > S_{max}``,
 and otherwise
 
 ```math 
-f(S_{max}, \\alpha_{mean}, \\phi_{mean}) = \\frac{2S_{max}}{ \\alpha_{mean} + \\phi_{mean} } 
+f(S_{max}, \\alpha_{mean}, \\phi_{mean}) = \\frac{2S_{max}}{ \\alpha_{mean} + \\theta_{mean} } 
 ```
 
 Higher values are indicative of a higher spindle probability. The rejection
 threshold recommended in the original paper is ``\\lambda = 4.5``.
 """
 function sigma_index(x::Vector{<:AbstractFloat}, fs::Integer)
-    segs = overlaps(x, fs, 0)
+    segs = segment(x, fs)
     amps = map(x -> AmplitudeSpectrum(x, fs), segs)
 
     # Helper function `f`: Applys function `g` to the amplitude spectrum in a given 
@@ -63,15 +62,15 @@ and the RSP is defined as
 RSP(t) = \\frac{\\int_{11}^{16} S(t, f) df}{\\int_{0.5}^{40} S(t, f) df}
 ```
 
-This definition is more intelligible than the that of the sigma index, insofar
+This definition is more intelligible than the that of the ``\\sigma``-index, insofar
 as it represents the ratio of the total power in the spindle band with respect
-to the total power in the ``\\delta`` to ``\\phi`` frequency range. It is evident
+to the total power in the ``[0.5, 40]`` frequency range. It is evident
 by definition that ``0 \\leq RSP \\leq 1``. Higher values are indicative of a higher spindle
 probability (it should be clear that ``RSP`` is not a probability itself).
 The rejection threshold recommended in the original paper is ``\\lambda = 0.22``.
 """
 function relative_spindle_power(x::Vector{<:AbstractFloat}, fs::Integer)
-    segs = overlaps(x, fs, 0)
+    segs = segment(x, fs)
     amps = map(x -> AmplitudeSpectrum(x, fs, 512), segs)
     
     function f(amp::AmplitudeSpectrum, band_lower::Number, band_upper::Number, g::Function)
