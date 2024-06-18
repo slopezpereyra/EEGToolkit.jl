@@ -10,6 +10,7 @@ A struct representing time series data.
 - `mins::AbstractFloat`: Duration in minutes.
 - `hours::AbstractFloat`: Duration in hours.
 - `epoch_length::Integer`: Length in seconds understood to comprise an epoch (defaults to 30).
+- `subepoch_length::Integer`: Length in seconds understood to comprise an epoch (defaults to 30).
 """
 struct TimeSeries 
     x::Vector{<:AbstractFloat}
@@ -18,8 +19,12 @@ struct TimeSeries
     mins::AbstractFloat
     hours::AbstractFloat
     epoch_length::Integer
+    subepoch_length::Integer
 
-    function TimeSeries(x, fs; epoch_length=30)
+    function TimeSeries(x, fs; epoch_length=30, subepoch_length=5)
+        if subepoch_length >= epoch_length 
+            throw(ArgumentError("Subepoch length must be inferior to epoch length."))
+        end
         secs = length(x)/fs
         mins = secs/60
         hours = mins/60
