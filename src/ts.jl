@@ -142,7 +142,7 @@ Returns a vector `[x₁, …, xₖ]` with all values `xᵢ` corresponding to the
 """
 function epoch(signal::TimeSeries, n::Integer)
     y = signal.x[((n - 1) * signal.fs * signal.epoch_length) + 1:n * signal.fs * signal.epoch_length]
-    TimeSeries(y, signal.fs; epoch_length=signal.subepoch_length subepoch_length = signal.epoch_length)
+    TimeSeries(y, signal.fs; epoch_length=signal.subepoch_length, subepoch_length = signal.epoch_length)
 end
 
 """
@@ -159,5 +159,5 @@ function epoch(signal::TimeSeries, n::Integer, m::Integer)
         throw(ArgumentError("The second epoch should be greater than the first."))
     end
     y = signal.x[((n - 1) * signal.fs * signal.epoch_length) + 1:m * signal.fs * signal.epoch_length]
-    TimeSeries(y, signal.fs; epoch_length=signal.subepoch_length subepoch_length = signal.epoch_length)
+    TimeSeries(y, signal.fs; epoch_length=signal.subepoch_length, subepoch_length = signal.epoch_length)
 end
