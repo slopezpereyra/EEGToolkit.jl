@@ -41,7 +41,7 @@ SPECT2 =
 
 @testset "EEGToolkit.jl" begin
     ε = 0.001
-    edf_file = "../edfs/37bl.edf"
+    edf_file = "edfs/37bl.edf"
     eeg = EEG(edf_file)
     
     filter!(p -> startswith(first(p), "EEG"), eeg.signals)
