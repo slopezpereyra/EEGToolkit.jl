@@ -51,6 +51,58 @@ function filter_by_stage(eeg::EEG, channel::String, stages::Vector)
 end
 
 """
+`plot_eeg(eeg::EEG, s::Integer, e::Integer; channels::Vector{String}=[""], spacing::AbstractFloat=1.5)`
+
+Plots EEG channels from epoch `s` to epoch `e`. Specific channels may be selected with the `channels` karg.
+The `spacing` argument is an added factor in the normalization of the EEG signals - the vertical distance between
+each signal in the plot grows proportionally to `spacing`.
+"""
+function plot_eeg(eeg::EEG, s::Integer, e::Integer; channels::Vector{String}=[""], spacing::AbstractFloat=1.5)
+
+    if any(x -> x ∉ collect(keys(eeg.signals)), channels)
+        throw(ArgumentError("Attempting to plot a non-existent channel. Revise the `channels` keyword argument."))
+    end
+   
+    signal_dict = channels != [""] ? filter(p -> first(p) in channels, eeg.signals) : eeg.signals
+    S = [] # Channel values (i.e. signals)
+    C = collect(keys(signal_dict)) # Channel names
+    i = 1
+    L = length(C)
+    for (key, value) in signal_dict
+        signal = epoch2(value, s, e).x
+        signal = i .+ (signal .- mean(signal)) ./ (spacing * L * std(signal))
+        push!(S, signal) 
+        i += 1
+    end
+    p = plot(ylabel = "Amplitude (uV)", xlabel = "Time (s)", yticks = (1:L, C));
+
+    for (i, s) in enumerate(S)
+        plot!(1:length(s), s, label = "")
+    end
+    return(p)
+end
+
+"""
+`remove_channel!(eeg::EEG, channel::String)`
+
+Removes a channel from the EEG.
+"""
+function remove_channel!(eeg::EEG, channel::String)
+    delete!(eeg.signals, channel)
+end
+
+"""
+`remove_channel!(eeg::EEG, channel::String)`
+
+Removes a list of channels from the EEG.
+"""
+function remove_channel!(eeg::EEG, channels::Vector{String})
+    for chan in channels 
+        delete!(eeg.signals, chan)
+    end
+end
+
+"""
 `artifact_reject(signal::TimeSeries, anom_matrix::Matrix)`
 
 An anomaly matrix ``A  \\in  \\mathbb{N}^{n  \\times  2}``  is  a  matrix  holds
