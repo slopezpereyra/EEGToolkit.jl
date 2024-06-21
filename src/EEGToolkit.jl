@@ -3,10 +3,12 @@ module EEGToolkit
 export TimeSeries
 export gen_time_domain 
 export segment
+export epoch 
 
 export EEG
-export epoch 
 export filter_by_stage
+export remove_channel! 
+export plot_eeg
 export artifact_reject
 
 export AmplitudeSpectrum 
