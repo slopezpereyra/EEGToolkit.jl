@@ -1,4 +1,4 @@
-
+using Dates
 
 """
 A struct representing time series data.
@@ -125,15 +125,80 @@ function segment(ts::TimeSeries, L::Int; kargs...)
 end
 
 """
+`seconds_to_time(seconds::Union{AbstractFloat, Integer})`
+
+Helper function: maps a time in seconds to a Time object.
+"""
+function seconds_to_time(seconds::Union{AbstractFloat, Integer})
+    # Calculate the components
+    hours = floor(Int, seconds / 3600)
+    minutes = floor(Int, (seconds % 3600) / 60)
+    sec = floor(Int, seconds % 60)
+    milliseconds = floor(Int, (seconds - floor(seconds)) * 1000)
+    
+    # Create the Time object
+    Time(hours, minutes, sec, milliseconds)
+end
+
+"""
+`gen_time_domain(fs::Integer, s::Union{Integer, AbstractFloat}, e::Union{Integer, AbstractFloat})`
+
+Generates a vector of Time objects representing the time instances ``t_1, \\ldots, t_n`` in
+a signal with with a given sampling rate ``f_s`` from second ``s`` to second ``e``. For instance,
+``f_s = 500``, ``s = 10, e = 11`` would map to ``10.002, 10.004, \\ldots, 10.998, 11``.
+
+```julia 
+julia> gen_time_domain2(500, 10, 11)
+500-element Vector{Time}:
+ 00:00:10.002
+ 00:00:10.004
+ 00:00:10.006
+ 00:00:10.008
+ 00:00:10.01
+ 00:00:10.012
+ ⋮
+ 00:00:10.992
+ 00:00:10.994
+ 00:00:10.996
+ 00:00:10.998
+ 00:00:11
+
+julia> gen_time_domain2(500, 600, 6000)
+2700000-element Vector{Time}:
+ 00:10:00.002
+ 00:10:00.004
+ ⋮
+ 01:39:59.998
+ 01:40:00
+```
+"""
+function gen_time_domain(fs::Integer, s::Union{Integer, AbstractFloat}, e::Union{Integer, AbstractFloat})
+    start_time_obj = seconds_to_time(s)
+    step = 1 / fs
+    L = length(collect(1:step:e-s+1))
+    [start_time_obj + Millisecond(round(i * step * 1000)) for i in 1:L-1]
+end
+
+"""
 `gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer})`
 
-Given an TimeSeries, generates the time vector t₁, …, tₙ corresponding to 
-the signal from time `s` to `e` in seconds.
+Generates a vector of Time objects representing the time instances ``t_1, \\ldots, t_n`` in
+a `TimeSeries` signal from epoch ``s`` to epoch ``e``. 
 """
 function gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer})
-    step = 1 / signal.fs
-    [i for i in (s+step):step:e]
+    gen_time_domain(signal.fs, s*signal.epoch_length, e*signal.epoch_length)
 end
+
+"""
+`gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer})`
+
+Generates a vector of Time objects representing the time instances ``t_1, \\ldots, t_n`` in
+a `TimeSeries` signal, starting at `00:00:init` where `init` is ``\\frac{1}{f_s}``.
+"""
+function gen_time_domain(signal::TimeSeries)
+    gen_time_domain(signal.fs, 0, length(signal.x) / signal.fs)
+end
+
 
 """
 `epoch(signal::TimeSeries, n::Integer)`
@@ -153,7 +218,7 @@ The default sampling rate is used to compute the indexes.
 """
 function epoch(signal::TimeSeries, n::Integer, m::Integer)
     if (n == m)
-        return epoch(eeg, n)
+        return epoch(signal, n)
     end
     if (n > m)
         throw(ArgumentError("The second epoch should be greater than the first."))
@@ -161,4 +226,40 @@ function epoch(signal::TimeSeries, n::Integer, m::Integer)
     y = signal.x[((n - 1) * signal.fs * signal.epoch_length) + 1:m * signal.fs * signal.epoch_length]
     TimeSeries(y, signal.fs; epoch_length=signal.epoch_length, subepoch_length = signal.subepoch_length)
 end
+
+
+"""
+`plot_ts(ts::TimeSeries, s::Integer, e::Integer; norm=false, ylab="Amplitude (uV)") `
+
+Plots `TimeSeries` from epoch `s` to epoch `e`. The series many be normalized.
+"""
+function plot_ts(ts::TimeSeries, s::Integer, e::Integer; norm=false, ylab="Amplitude (uV)")
+    t = gen_time_domain(ts, s, e+1)
+    ts = epoch(ts, s, e)
+    y = norm ? ts.x .- mean(ts.x) ./ std(ts.x) : ts.x
+    p = plot(t, y, ylabel = ylab, xlabel = "Time");
+    return(p)
+end
+
+"""
+`plot_ts(ts::TimeSeries, s::Integer; kargs...)`
+
+Plots `TimeSeries` at epoch `s`.
+"""
+function plot_ts(ts::TimeSeries, s::Integer; kargs...)
+    plot_ts(ts, s, s; kargs...)
+end
+
+"""
+`plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")`
+
+Plots `TimeSeries`. The series may be normalized.
+"""
+function plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")
+    t = gen_time_domain(ts)
+    y = norm ? ts.x .- mean(ts.x) ./ std(ts.x) : ts.x
+    p = plot(t, y, ylabel = ylab, xlabel = "Time");
+    return(p)
+end
+
 

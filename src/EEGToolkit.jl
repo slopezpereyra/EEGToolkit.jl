@@ -4,6 +4,7 @@ export TimeSeries
 export gen_time_domain 
 export segment
 export epoch 
+export plot_ts
 
 export EEG
 export filter_by_stage

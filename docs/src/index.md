@@ -67,6 +67,7 @@ TimeSeries
 segment
 epoch
 gen_time_domain
+plot_ts
 ```
 
 ## EEG

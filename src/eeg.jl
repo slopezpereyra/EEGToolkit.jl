@@ -59,25 +59,17 @@ each signal in the plot grows proportionally to `spacing`.
 """
 function plot_eeg(eeg::EEG, s::Integer, e::Integer; channels::Vector{String}=[""], spacing::AbstractFloat=1.5)
 
-    if any(x -> x ∉ collect(keys(eeg.signals)), channels)
+    if channels != [""] && any(x -> x ∉ collect(keys(eeg.signals)), channels)
         throw(ArgumentError("Attempting to plot a non-existent channel. Revise the `channels` keyword argument."))
     end
    
     signal_dict = channels != [""] ? filter(p -> first(p) in channels, eeg.signals) : eeg.signals
-    S = [] # Channel values (i.e. signals)
-    C = collect(keys(signal_dict)) # Channel names
-    i = 1
-    L = length(C)
-    for (key, value) in signal_dict
-        signal = epoch2(value, s, e).x
-        signal = i .+ (signal .- mean(signal)) ./ (spacing * L * std(signal))
-        push!(S, signal) 
-        i += 1
-    end
-    p = plot(ylabel = "Amplitude (uV)", xlabel = "Time (s)", yticks = (1:L, C));
-
-    for (i, s) in enumerate(S)
-        plot!(1:length(s), s, label = "")
+    X = [gen_time_domain2(signal.fs, s*signal.epoch_length, (e+1)*signal.epoch_length) for signal in values(signal_dict)]
+    L = length(signal_dict)
+    p = plot(ylabel = "Amplitude (uV)", xlabel = "Time", yticks = (1:L, collect(keys(signal_dict))));
+    for (i, signal) in enumerate(values(signal_dict))
+        signal = epoch(signal, s, e).x
+        plot!(X[i],  i .+ (signal .- mean(signal)) ./ (spacing * (2*L) * std(signal)), label = "")
     end
     return(p)
 end
@@ -97,9 +89,7 @@ end
 Removes a list of channels from the EEG.
 """
 function remove_channel!(eeg::EEG, channels::Vector{String})
-    for chan in channels 
-        delete!(eeg.signals, chan)
-    end
+    filter!(p -> first(p) in channels, eeg.signals)
 end
 
 """
