@@ -5,6 +5,7 @@ export gen_time_domain
 export segment
 export epoch 
 export plot_ts
+export seconds_to_time
 
 export EEG
 export filter_by_stage
