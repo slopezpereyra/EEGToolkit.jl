@@ -130,7 +130,7 @@ whose values are those epochs in an `TimeSeries` that contain
 anomalies or artifacts. This function segments the TimeSeries and filters out all 
 epochs containing artifacts.
 """
-function artifact_reject(signal::TimeSeries, anoms::Matrix)
+function artifact_reject(signal::TimeSeries, anoms::Vector{Integer})
     T = typeof(signal.x[1])
     epochs = segment(signal, signal.fs * signal.epoch_length)
     deleteat!( epochs, anoms )

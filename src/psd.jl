@@ -63,22 +63,13 @@ becomes
 
 
 ```math 
-\\frac{1}{M \\varphi} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{\\zeta \\sum_i w_i^2} \\right]
+\\frac{1}{M \\varphi} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{ \\sum_i w_i^2} \\right]
 ```
 
 where ``w_1, \\ldots, w_n`` a Hanning window, ``M`` the number of segments,
-``H_i(f)`` the FFT of the ``i``th segment of the signal, and ``\\varphi`` and ``\\zeta``
-normalization factors defaulting to `2 * seg_length` and `1`. In the 
-function arguments, ``\\varphi`` corresponds to the `normalization` argument 
-and ``\\zeta`` to the `inner_normalization` argument. 
+``H_i(f)`` the FFT of the ``i``th segment of the signal, and ``\\varphi``
+a normalization factor defaulting to `2 * seg_length`.
 
-Thus, the default estimation over ``M`` windows with ``k`` samples each is
-
-```math 
-\\frac{1}{M\\times 2k} \\sum_i^M \\left[ \\frac{2|H_i(f)|^2}{f_s \\sum_i w_i^2} \\right]
-```
-
-To avoid any normalization, simply let ``\\varphi = 1``.
 
 # Fields
 - `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
@@ -88,7 +79,7 @@ To avoid any normalization, simply let ``\\varphi = 1``.
 
 # Constructors
 - `PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)`: Computes a direct PSD over a signal `x` with sampling rate `fs`. The signal may be padded to an optional length `pad`. An optional normalization factor `norm_factor` may be used. Set `dB` to true to transform the spectrum to decibels.
-- `PSD(x::Vector, fs::Int, seg_length::Int; overlap::Union{ <:AbstractFloat, Integer }=0.5, normalization::Union{ <:AbstractFloat, Integer } = -1, inner_normalization::Union{<:AbstractFloat, Integer}=1, pad::Integer=0, dB=false)`: Splits the signal `x` into segments of length `seg_length` with an `overlap` in [0, 1) (defaults to 0.5). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. The estimation within each segment is done with the first `PSD` constructor and may be normalized with the `inner_normalization` argument. The segment-averaged estimation is normalized with a `normalization` that defaults to ``2MM'``, where `M` is the number of segments and `M'` is the number of samples in each segment (i.e. `seg_length`). Setting `overlap` to zero equates to using Barlett's method. Setting `overlap` greater than zero equates to using Welch's method. 
+- `PSD(x::Vector, fs::Int, seg_length::Int; overlap::Union{ <:AbstractFloat, Integer }=0.5, normalization::Union{ <:AbstractFloat, Integer } = -1, pad::Integer=0, dB=false)`: Splits the signal `x` into segments of length `seg_length` with an `overlap` in [0, 1) (defaults to 0.5). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. The estimation is normalized with a `normalization` that defaults to ``2Mk'``, where `M` is the number of segments and `k'` is the number of samples in each segment (i.e. `seg_length`). Setting `overlap` to zero equates to using Barlett's method. Setting `overlap` greater than zero equates to using Welch's method. 
 - `PSD(ts::TimeSeries; kargs...)` : Wrapper to apply the first constructor to a TimeSeries signal.
 - `PSD(ts::TimeSeries, seg_length::Integer; kargs...)`: Wrapper to apply the second constructor (Welch or Barlett's method) to a TimeSeries signal.
 """
@@ -119,7 +110,6 @@ struct PSD
     function PSD(x::Vector{<:AbstractFloat}, fs::Int, seg_length::Integer;
                 overlap::Union{<:AbstractFloat,Integer} = 0.5, 
                 normalization::Union{<:AbstractFloat,Integer}=-1,
-                inner_normalization::Union{<:AbstractFloat, Integer}=1,
                 pad::Integer=0,
                 dB = false)
 
@@ -128,7 +118,7 @@ struct PSD
 
         segs = segment(x, seg_length; overlap=overlap, symmetric=true)
         M = length(segs)
-        psds = map(x -> PSD(x, fs; norm_factor=inner_normalization), segs)
+        psds = map(x -> PSD(x, fs), segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
 
