@@ -61,6 +61,5 @@ using Test
 #    spec = Spectrogram(s.x, fs*30, x -> PSD(x, fs, fs*5); dB=true)
 #    @test abs(spec.spectrums[1,3] - 16.775304018633083) < ε
 #    @test abs(spec.spectrums[2,1200] - -51.80621574940826) < ε
-#
-    # Write your tests here.
+
 end
