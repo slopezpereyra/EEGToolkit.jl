@@ -111,7 +111,7 @@ empty.
 """
 function artifact_reject(signal::TimeSeries, anom_matrix::Matrix)
     T = typeof(signal.x[1])
-    epochs = segment(signal, signal.fs * signal.epoch_length)
+    epochs = segment(signal, signal.fs * signal.epoch_length; symmetric = true)
     windows = map(e -> segment(e, signal.fs * signal.subepoch_length; symmetric=true), epochs)
     for epoch in unique(anom_matrix[:, 1])
         epoch_indexes = findall(x -> x == epoch, anom_matrix[:, 1])
@@ -132,6 +132,6 @@ epochs containing artifacts.
 """
 function artifact_reject(signal::TimeSeries, anoms::Vector{Integer})
     T = typeof(signal.x[1])
-    epochs = segment(signal, signal.fs * signal.epoch_length)
+    epochs = segment(signal, signal.fs * signal.epoch_length; symmetric = true)
     deleteat!( epochs, anoms )
 end
