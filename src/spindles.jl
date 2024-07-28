@@ -1,8 +1,6 @@
 include("psd.jl")
 
 """
-`function sigma_index(x::Vector{<:AbstractFloat}, fs::Integer)`
-
 The ``\\sigma``-index algorithm [(Huupponen et al.,
 2007)](https://pubmed.ncbi.nlm.nih.gov/17555950/) find abnormally high amplitude values in the spindle frequency
 band. Per each 1 second window of the EEG, it computes
@@ -51,8 +49,6 @@ function sigma_index(x::Vector{<:AbstractFloat}, fs::Integer)
 end
 
 """
-`relative_spindle_power(x::Vector{<:AbstractFloat}, fs::Integer)`
-
 The Relative Spindle Power (RSP) algorithm [(Devuyst et al., 2011)](https://pubmed.ncbi.nlm.nih.gov/22254656/) 
 also detects abnormal values along the spindle frequency band. 
 For every 1 second window, the amplitude spectrum ``S(t)`` is computed, 

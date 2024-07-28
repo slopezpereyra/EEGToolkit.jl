@@ -33,8 +33,6 @@ struct TimeSeries
 end
 
 """
-`segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0, symmetric=false) where {T}`
-
 Splits a vector `v` into segments of length `L` with an overlap `overlap` expressed as a fraction of L. The `overlap` defaults to `0` (no overlap).
 Returns a vector ``v`` of vectors - i.e. `Vector{Vector{T}}` - with ``\\vec{v_i}`` the ``i``th segment in the split.
 
@@ -115,8 +113,6 @@ function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0
 end
 
 """
-`segment(ts::TimeSeries, L::Int; kargs...)`
-
 Wrapper to segment the vector `ts.x` in the time 
 series `ts`.
 """
@@ -125,8 +121,6 @@ function segment(ts::TimeSeries, L::Int; kargs...)
 end
 
 """
-`seconds_to_time(seconds::Union{AbstractFloat, Integer})`
-
 Helper function: maps a time in seconds to a Time object.
 """
 function seconds_to_time(seconds::Union{AbstractFloat, Integer})
@@ -141,8 +135,6 @@ function seconds_to_time(seconds::Union{AbstractFloat, Integer})
 end
 
 """
-`gen_time_domain(fs::Integer, s::Union{Integer, AbstractFloat}, e::Union{Integer, AbstractFloat})`
-
 Generates a vector of Time objects representing the time instances ``t_1, \\ldots, t_n`` in
 a signal with with a given sampling rate ``f_s`` from second ``s`` to second ``e``. For instance,
 ``f_s = 500``, ``s = 10, e = 11`` would map to ``10.002, 10.004, \\ldots, 10.998, 11``.
@@ -180,8 +172,6 @@ function gen_time_domain(fs::Integer, s::Union{Integer, AbstractFloat}, e::Union
 end
 
 """
-`gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer})`
-
 Generates a vector of Time objects representing the time instances ``t_1, \\ldots, t_n`` in
 a `TimeSeries` signal from epoch ``s`` to epoch ``e``. 
 """
@@ -190,8 +180,6 @@ function gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e:
 end
 
 """
-`gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer})`
-
 Generates a vector of Time objects representing the time instances ``t_1, \\ldots, t_n`` in
 a `TimeSeries` signal, starting at `00:00:init` where `init` is ``\\frac{1}{f_s}``.
 """
@@ -201,8 +189,6 @@ end
 
 
 """
-`epoch(signal::TimeSeries, n::Integer)`
-
 Returns a vector `[x₁, …, xₖ]` with all values `xᵢ` corresponding to the `n`th epoch in the signal.
 """
 function epoch(signal::TimeSeries, n::Integer)
@@ -211,8 +197,6 @@ function epoch(signal::TimeSeries, n::Integer)
 end
 
 """
-`epoch(signal::TimeSeries, n::Integer, m::Integer)`
-
 Returns a vector `[x₁, …, xₖ]` with all indexes corresponding to epochs `n, n+1, …, m` of the EEG.
 The default sampling rate is used to compute the indexes.
 """
@@ -229,8 +213,6 @@ end
 
 
 """
-`plot_ts(ts::TimeSeries, s::Integer, e::Integer; norm=false, ylab="Amplitude (uV)") `
-
 Plots `TimeSeries` from epoch `s` to epoch `e`. The series many be normalized.
 """
 function plot_ts(ts::TimeSeries, s::Integer, e::Integer; norm=false, ylab="Amplitude (uV)")
@@ -242,8 +224,6 @@ function plot_ts(ts::TimeSeries, s::Integer, e::Integer; norm=false, ylab="Ampli
 end
 
 """
-`plot_ts(ts::TimeSeries, s::Integer; kargs...)`
-
 Plots `TimeSeries` at epoch `s`.
 """
 function plot_ts(ts::TimeSeries, s::Integer; kargs...)
@@ -251,8 +231,6 @@ function plot_ts(ts::TimeSeries, s::Integer; kargs...)
 end
 
 """
-`plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")`
-
 Plots `TimeSeries`. The series may be normalized.
 """
 function plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")

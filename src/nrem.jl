@@ -47,8 +47,6 @@ function stage_to_word(stages)
 end
 
 """
-`nrem(staging::Vector, n::Integer=30, m::Integer=10)`
-
 Finds the `k` underlying NREM periods in a staging vector.
 Returns a vector of vectors `V` s.t. the `i`th vector in `V` 
 contains the epochs which comprise the `i`th NREM period. Thus,
@@ -110,8 +108,6 @@ function nrem(staging::Vector, n::Integer=30, m::Integer=10)
 end
 
 """
-`nrem(eeg::EEG, n::Integer=30, m::Integer=10)`
-
 Finds the `k` underlying NREM periods in the staging vector 
 of an EEG.
 """
