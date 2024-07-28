@@ -1,7 +1,3 @@
-using EDF
-using Plots
-include("ts.jl") 
-
 """
 A struct for the EEG data type.
 
@@ -41,6 +37,8 @@ struct EEG
 end
 
 """
+`filter_by_stage(eeg::EEG, channel::String, stages::Vector)`
+
 Returns all portions of an EEG channel in a given stage of the staging vector.
 """
 function filter_by_stage(eeg::EEG, channel::String, stages::Vector)
@@ -51,6 +49,8 @@ end
 EEGToolkit.epoch
 
 """
+`plot_eeg(eeg::EEG, s::Integer, e::Integer; channels::Vector{String}=[""], spacing::AbstractFloat=1.5)`
+
 Plots EEG channels from epoch `s` to epoch `e`. Specific channels may be selected with the `channels` karg.
 The `spacing` argument is an added factor in the normalization of the EEG signals - the vertical distance between
 each signal in the plot grows proportionally to `spacing`.
@@ -73,6 +73,8 @@ function plot_eeg(eeg::EEG, s::Integer, e::Integer; channels::Vector{String}=[""
 end
 
 """
+`remove_channel!(eeg::EEG, channel::String)`
+
 Removes a channel from the EEG.
 """
 function remove_channel!(eeg::EEG, channel::String)
@@ -80,6 +82,8 @@ function remove_channel!(eeg::EEG, channel::String)
 end
 
 """
+`remove_channel!(eeg::EEG, channels::Vector{String})`
+
 Removes a list of channels from the EEG.
 """
 function remove_channel!(eeg::EEG, channels::Vector{String})
@@ -87,6 +91,8 @@ function remove_channel!(eeg::EEG, channels::Vector{String})
 end
 
 """
+`artifact_reject(signal::TimeSeries, anom_matrix::Matrix)`
+
 An anomaly matrix ``A  \\in  \\mathbb{N}^{n  \\times  2}``  is  a  matrix  holds
 epoch-subepoch   pairs   that   contain    artifacts    in    a    `TimeSeries`.
 Each  row   of   ``(n, m)`` of ``A`` denotes that the ``n``th epoch contained 
@@ -115,6 +121,8 @@ end
 
 
 """
+`artifact_reject(signal::TimeSeries, anoms::Vector{Integer})`
+
 An anomaly vector ``\\vec{x} \\in \\mathbb{N}^{n}`` is a sorted vector
 whose values are those epochs in an `TimeSeries` that contain 
 anomalies or artifacts. This function segments the TimeSeries and filters out all 
@@ -124,4 +132,14 @@ function artifact_reject(signal::TimeSeries, anoms::Vector{Integer})
     T = typeof(signal.x[1])
     epochs = segment(signal, signal.fs * signal.epoch_length; symmetric = true)
     deleteat!( epochs, anoms )
+end
+
+"""
+`nrem(eeg::EEG, n::Integer=30, m::Integer=10)`
+
+Finds the `k` underlying NREM periods in the staging vector 
+of an EEG.
+"""
+function nrem(eeg::EEG, n::Integer=30, m::Integer=10)
+    nrem(eeg.staging, n, m)
 end

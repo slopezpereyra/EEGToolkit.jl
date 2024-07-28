@@ -1,7 +1,3 @@
-using FFTW
-using DSP
-using Statistics
-
 """
 Structure for amplitude spectrum estimations. Estimations are by default 
 one sided, with frequencies ranging from [0, fₛ/2].
@@ -212,6 +208,8 @@ end
 
 
 """
+`plot_spectrogram(spec::Spectrogram; freq_lim::AbstractFloat=30.0, type::Int=1, color=:nipy_spectral)`
+
 Plots a spectogram `spec` either in 2d (`type = 1`) or 3d (`type = 2`). An optional 
 frequency limit (`freq_lim`) may be set (defaults to 30Hz). The color palette 
 `color` may be set; defaults to `nipy_spectral`.
@@ -230,6 +228,8 @@ function plot_spectrogram(spec::Spectrogram; freq_lim::AbstractFloat=30.0, type:
 end
 
 """
+`plot_psd(psd::PSD; freq_lim=30.0)`
+
 Plot a PSD with x-axis being frequency and y-axis being estimated power spectrum.
 """
 function plot_psd(psd::PSD; freq_lim=30.0)
@@ -250,6 +250,8 @@ function next_power_of_two(n::Int)
 end
 
 """
+`zero_pad(v::Vector{T}, desired_length::Integer) where {T<:AbstractFloat}`
+
 Zero-pads a numeric vector `v` to a `desired_length`
 """
 function zero_pad(v::Vector{T}, desired_length::Integer) where {T<:AbstractFloat}
@@ -268,6 +270,8 @@ end
 
 
 """
+`freq_band(spec::Union{PSD,AmplitudeSpectrum}, lower::AbstractFloat, upper::AbstractFloat)`
+
 Given a `PSD` or `AmplitudeSpectrum`, returns a `Vector{<:AbstractFloat}` with the powers within the frequency band `[lower, upper]`.
 """
 function freq_band(spec::Union{PSD,AmplitudeSpectrum}, lower::AbstractFloat, upper::AbstractFloat)
@@ -277,6 +281,8 @@ end
 
 
 """
+`freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat, window::Integer)`
+
 Given a `Spectrogram`, returns a `Vector{<:AbstractFloat}` with the powers within a frequency band `[lower, upper]`
 of a specific window (row of the spectrogram).
 """
@@ -287,6 +293,8 @@ function freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat
 end
 
 """
+`freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
+
 Given a `Spectrogram`, returns a `Matrix{<:AbstractFloat}` with the powers within a frequency band [lower, upper]
 across all time windows.
 """
@@ -297,7 +305,9 @@ function freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat
 end
 
 """
-Given a ``, returns the mean power in a given frequency band `[lower, upper]`. This function 
+`mean_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
+
+Given a `Spectrogram`, returns the mean power in a given frequency band `[lower, upper]`. This function 
 effectively computes 
 
 ```math
@@ -314,6 +324,8 @@ function mean_band_power(spec::Spectrogram, lower::AbstractFloat, upper::Abstrac
 end
 
 """
+`mean_band_power(spec::PSD, lower::AbstractFloat, upper::AbstractFloat)`
+
 Given a `PSD`, returns the mean power in a given frequency band `[lower, upper]`. 
 """
 function mean_band_power(spec::PSD, lower::AbstractFloat, upper::AbstractFloat)

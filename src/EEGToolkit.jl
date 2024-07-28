@@ -1,5 +1,12 @@
 module EEGToolkit
 
+using Dates
+using EDF
+using Plots
+using FFTW
+using DSP
+using Statistics
+
 export TimeSeries
 export gen_time_domain 
 export segment
