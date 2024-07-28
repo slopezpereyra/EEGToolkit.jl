@@ -35,10 +35,10 @@ export nrem
 export sigma_index
 export relative_spindle_power
 
-
+include("ts.jl")
 include("eeg.jl")
-include("nrem.jl")
 include("psd.jl")
 include("spindles.jl")
+include("nrem.jl")
 
 end
