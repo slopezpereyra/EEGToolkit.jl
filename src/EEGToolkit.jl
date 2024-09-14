@@ -8,7 +8,6 @@ using DSP
 using Statistics
 
 export TimeSeries
-export gen_time_domain 
 export segment
 export epoch 
 export plot_ts

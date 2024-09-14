@@ -37,42 +37,6 @@ struct EEG
 end
 
 """
-`filter_by_stage(eeg::EEG, channel::String, stages::Vector)`
-
-Returns all portions of an EEG channel in a given stage of the staging vector.
-"""
-function filter_by_stage(eeg::EEG, channel::String, stages::Vector)
-    stage_indexes = findall(x -> x in stages, eeg.staging)
-    [epoch(eeg.signals[channel], i) for i in stage_indexes]
-end
-
-EEGToolkit.epoch
-
-"""
-`plot_eeg(eeg::EEG, s::Integer, e::Integer; channels::Vector{String}=[""], spacing::AbstractFloat=1.5)`
-
-Plots EEG channels from epoch `s` to epoch `e`. Specific channels may be selected with the `channels` karg.
-The `spacing` argument is an added factor in the normalization of the EEG signals - the vertical distance between
-each signal in the plot grows proportionally to `spacing`.
-"""
-function plot_eeg(eeg::EEG, s::Integer, e::Integer; channels::Vector{String}=[""], spacing::AbstractFloat=1.5)
-
-    if channels != [""] && any(x -> x ∉ collect(keys(eeg.signals)), channels)
-        throw(ArgumentError("Attempting to plot a non-existent channel. Revise the `channels` keyword argument."))
-    end
-   
-    signal_dict = channels != [""] ? filter(p -> first(p) in channels, eeg.signals) : eeg.signals
-    X = [gen_time_domain2(signal.fs, s*signal.epoch_length, (e+1)*signal.epoch_length) for signal in values(signal_dict)]
-    L = length(signal_dict)
-    p = plot(ylabel = "Amplitude (uV)", xlabel = "Time", yticks = (1:L, collect(keys(signal_dict))));
-    for (i, signal) in enumerate(values(signal_dict))
-        signal = epoch(signal, s, e).x
-        plot!(X[i],  i .+ (signal .- mean(signal)) ./ (spacing * (2*L) * std(signal)), label = "")
-    end
-    return(p)
-end
-
-"""
 `remove_channel!(eeg::EEG, channel::String)`
 
 Removes a channel from the EEG.
