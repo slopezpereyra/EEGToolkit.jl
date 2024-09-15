@@ -14,7 +14,6 @@ with ``w_i`` a Hanning window.
 
 - `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
 - `spectrum::Vector{<:AbstractFloat}`: Estimated spectral amplitude
-- `formula::String`: A string representation of the formula used for the estimation.
 
 # Constructors
 `AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)` : Computes a direct PSD over a signal `x` with a given `sampling_rate`.
@@ -22,7 +21,6 @@ with ``w_i`` a Hanning window.
 struct AmplitudeSpectrum
     freq::Vector{<:AbstractFloat}
     spectrum::Vector{<:AbstractFloat}
-    formula::String
 
     function AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer=0)
         N = length(x)
@@ -70,8 +68,6 @@ a normalization factor defaulting to `2 * seg_length`.
 # Fields
 - `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
 - `spectrum::Vector{<:AbstractFloat}` : Estimated spectral density in dB.
-- `method::String`: Estimation method used 
-- `formula::String` : A string representation of the formula used for the estimation.
 
 # Constructors
 - `PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)`: Computes a direct PSD over a signal `x` with sampling rate `fs`. The signal may be padded to an optional length `pad`. An optional normalization factor `norm_factor` may be used. Set `dB` to true to transform the spectrum to decibels.
@@ -82,8 +78,6 @@ a normalization factor defaulting to `2 * seg_length`.
 struct PSD
     freq::Vector{<:AbstractFloat}
     spectrum::Vector{<:AbstractFloat}
-    method::String
-    formula::String
 
     function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)
         N = length(x)
@@ -109,8 +103,6 @@ struct PSD
                 pad::Integer=0,
                 dB = false)
 
-        method = overlap > 0 ? "Welch's method" : "Barlett's method"
-        formula = "1/(M * normalization) ∑ ᵢᴹ [ 2|Hᵢ(f)|² / ( fₛ ∑  wᵢ² ) ]  where w₁, …, wₗ a Hanning window, M the number of segments, and Hᵢ(f) the FFT of the ith segment of the signal. "
 
         segs = segment(x, seg_length; overlap=overlap, symmetric=true)
         M = length(segs)
@@ -126,7 +118,7 @@ struct PSD
         if dB 
             w = pow2db.(w)
         end
-        new(freq, w, method, formula)
+        new(freq, w)
     end
 
     function PSD(ts::TimeSeries; kargs...)
