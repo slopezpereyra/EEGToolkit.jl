@@ -34,7 +34,7 @@ struct AmplitudeSpectrum
         freq = [i for i in 0:(length(ft)-1)] .* sampling_rate / N
         normalization = 2 / (sum(hann .^ 2))
         spectrum = ft * normalization
-        new(freq, spectrum, "2|H(f)| / ∑ wᵢ²  with  w₁, …, wₗ a Hanning window")
+        new(freq, spectrum)
     end
 end
 
@@ -94,7 +94,7 @@ struct PSD
         if dB 
             spectrum = pow2db.(spectrum)
         end
-        new(freq, spectrum, "Direct (no segmentation)", "2|H(f)|² / ( ∑ wᵢ² * fₛ )  with  w₁, …, wₗ a Hanning window")
+        new(freq, spectrum)
     end
 
     function PSD(x::Vector{<:AbstractFloat}, fs::Int, seg_length::Integer;
