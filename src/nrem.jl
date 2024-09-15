@@ -20,7 +20,7 @@ function insert_spaces_on_change(str)
 end
 
 # O(n) + O(n) + O(n) = O(n)
-function stage_to_word(stages)
+function stage_to_word(stages, m)
 
     # Given a stages s₁, ..., sₙ, produces a sentence s.t. each word 
     # in a sentence corresponds to segments of the staging with repeating 
@@ -35,7 +35,7 @@ function stage_to_word(stages)
             return w
         end
         # If previous condition was not met, we have either `5` or `6`.
-        if length(w) >= 10
+        if length(w) >= m
             return (w)
         end
         repeat("I", length(w))
@@ -64,7 +64,7 @@ function nrem(staging::Vector, n::Integer=30, m::Integer=10)
         where 5 marks REM, 6 wakefulness, and ? unknown/unscored."
     end
 
-    α = stage_to_word(staging)
+    α = stage_to_word(staging, m)
     φ = Regex("(?:[X](I*)){$n,}(?:5|6{$m,}|\$)")
     ζ = Regex("(?:[X](I*)){$n,}(?:[5](I*){$m,}|6{$m,}|\$)")
  
