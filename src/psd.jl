@@ -1,42 +1,3 @@
-"""
-Structure for amplitude spectrum estimations. Estimations are by default 
-one sided, with frequencies ranging from [0, fₛ/2].
-
-The formula used is 
-
-```math 
-\\frac{2|H(f)|}{\\sum_i w_i}
-```
-
-with ``w_i`` a Hanning window.
-
-# Fields
-
-- `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
-- `spectrum::Vector{<:AbstractFloat}`: Estimated spectral amplitude
-
-# Constructors
-`AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)` : Computes a direct PSD over a signal `x` with a given `sampling_rate`.
-"""
-struct AmplitudeSpectrum
-    freq::Vector{<:AbstractFloat}
-    spectrum::Vector{<:AbstractFloat}
-
-    function AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer=0)
-        N = length(x)
-        hann = hanning(N) # Hanning window
-        x = x .* hann
-        if pad > 0
-            x = zero_pad(x, pad)
-        end
-        ft = abs.(fft(x))
-        ft = ft[1:(div(N, 2)+1)] # Make one sided
-        freq = [i for i in 0:(length(ft)-1)] .* sampling_rate / N
-        normalization = 2 / (sum(hann .^ 2))
-        spectrum = ft * normalization
-        new(freq, spectrum)
-    end
-end
 
 
 """
@@ -160,7 +121,6 @@ In this package, mean power in a frequency range is computed with the `mean_band
 - `function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)`: Wrapper constructor for a `TimeSeries` object.
 """
 struct Spectrogram
-
     time::Vector
     freq::Vector{<:AbstractFloat}
     spectrums::Matrix{<:AbstractFloat}
@@ -262,11 +222,11 @@ end
 
 
 """
-`freq_band(spec::Union{PSD,AmplitudeSpectrum}, lower::AbstractFloat, upper::AbstractFloat)`
+`freq_band(spec::Union{PSD}, lower::AbstractFloat, upper::AbstractFloat)`
 
-Given a `PSD` or `AmplitudeSpectrum`, returns a `Vector{<:AbstractFloat}` with the powers within the frequency band `[lower, upper]`.
+Given a `PSD`, returns a `Vector{<:AbstractFloat}` with the powers within the frequency band `[lower, upper]`.
 """
-function freq_band(spec::Union{PSD,AmplitudeSpectrum}, lower::AbstractFloat, upper::AbstractFloat)
+function freq_band(spec::Union{PSD}, lower::AbstractFloat, upper::AbstractFloat)
     indexes = findall(x -> x >= lower && x <= upper, spec.freq)
     spec.spectrum[indexes]
 end
