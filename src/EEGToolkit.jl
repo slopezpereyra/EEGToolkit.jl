@@ -14,12 +14,10 @@ export plot_ts
 export seconds_to_time
 
 export EEG
-export filter_by_stage
 export remove_channel! 
 export plot_eeg
 export artifact_reject
 
-export AmplitudeSpectrum 
 export PSD 
 export Spectrogram
 export plot_spectrogram 
