@@ -69,7 +69,6 @@ seconds_to_time
 
 ```@docs
 EEG
-filter_by_stage 
 remove_channel!
 plot_eeg
 artifact_reject
