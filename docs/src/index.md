@@ -62,7 +62,6 @@ segment
 epoch
 plot_ts
 seconds_to_time
-gen_time_domain
 ```
 
 ## EEG
