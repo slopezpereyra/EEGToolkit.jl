@@ -9,7 +9,7 @@ makedocs(
          pages=[
                 "Home" => "index.md"
                ],
-        clean = true)
+        checkdocs = :exports)
 deploydocs(;
     repo="github.com/slopezpereyra/EEGToolkit.jl.git",
 )
