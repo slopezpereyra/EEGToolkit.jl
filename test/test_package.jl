@@ -1,6 +1,7 @@
 using EEGToolkit
 using Test
 
+
 DESIRED_CHANNELS = 
     [
     "EEG C4-A1", 

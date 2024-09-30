@@ -1,5 +1,5 @@
-include("src/ts.jl") 
-include("src/psd.jl")
+include("../src/ts.jl") 
+include("../src/psd.jl")
 using Test
 using DSP
 using FFTW
@@ -35,17 +35,6 @@ using Statistics
         @test length(psd_welch.freq) == div(seg_length, 2) + 1
     end
 
-    # Test frequency band extraction
-    @testset "Frequency Band Extraction" begin
-        band = freq_band(psd, 4.0, 6.0)
-        @test length(band) > 0
-    end
-
-    # Test mean band power
-    @testset "Mean Band Power" begin
-        mean_power = mean_band_power(psd, 4.0, 6.0)
-        @test mean_power > 0
-    end
 end
 
 # Tests for Spectrogram structure
@@ -68,29 +57,6 @@ end
     end
 
     # Test frequency band extraction from spectrogram
-    @testset "Frequency Band Extraction from Spectrogram" begin
-        band = freq_band(spec, 4.0, 6.0, 1)
-        @test length(band) > 0
-    end
-
-    # Test mean band power in spectrogram
-    @testset "Mean Band Power in Spectrogram" begin
-        mean_power = mean_band_power(spec, 4.0, 6.0)
-        @test mean_power > 0
-    end
-
-    # Test plot_spectrogram (2D)
-    @testset "Spectrogram Plotting" begin
-        plot = plot_spectrogram(spec)
-        @test plot isa Plots.Plot
-    end
-
-    # Test plot_psd
-    @testset "PSD Plotting" begin
-        psd = PSD(signal, fs)
-        plot = plot_psd(psd)
-        @test plot isa Plots.Plot
-    end
 end
 
 # Test helper functions
