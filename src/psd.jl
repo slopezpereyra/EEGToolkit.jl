@@ -41,12 +41,13 @@ struct PSD
     spectrum::Vector{<:AbstractFloat}
 
     function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)
-        N = length(x)
-        hann = hanning(N) # Hanning window
-        x = x .* hann
         if pad > 0
             x = zero_pad(x, pad)
         end
+        N = length(x)
+        hann = hanning(N) # Hanning window
+        x = x .* hann
+        print(length(x))
         ft = abs2.(fft(x))
         ft = ft[1:(div(N, 2)+1)] # Make one sided
         freq = [i for i in 0:(length(ft)-1)] .* fs / N
