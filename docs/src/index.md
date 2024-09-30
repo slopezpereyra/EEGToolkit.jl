@@ -31,12 +31,6 @@ that any methodology implemented by the package should be accessible enough so
 as to be reported in a scientific paper.  *Efficiency* means that large EEGs
 (e.g. sleep EEGs) should be processed and analyzed in minutes or less.
 
-*Transparency* affects primarily power spectral analysis (PSA). Most packages 
-don't report how PSA is done. Proprietary software is typically even more
-obscure. Combined with the fact that PSA is not standardized and may be
-computed in several many ways, this makes it very difficult to compare and rest
-results. 
-
 --- 
 
 > This package is free software—free as in freedom. You are free to use the
@@ -66,7 +60,6 @@ results.
 TimeSeries
 segment
 epoch
-gen_time_domain
 plot_ts
 seconds_to_time
 ```
@@ -182,17 +175,20 @@ using EEGToolkit
 
 # Assuming we have the stage data in a .csv and we have some function 
 # to read CSVs (e.g. from the CSV package)
-staging = some_function_to_read_csv("my_staging_data.csv")
+staging_df = some_function_to_read_csv("my_staging_data.csv")
+
+# Assuming the csv had a column named STAGES with the stage of each epoch.
+staging = staging_df.STAGES
 
 # We read an EEG that has channels C3-A2 and F3-A1. We assume the CSV had a 
 # column called STAGES with the stages of each epoch.
-eeg = EEG(edf_file, staging.STAGES)
+eeg = EEG(edf_file)
 
 # We extract the TimeSeries object corresponding to C3-A2
 signal = eeg.signals["C3-A2"]
 
-# Detect the NREM periods
-nrems = nrem(eeg)
+# Detect the NREM periods with default parameters.
+nrems = nrem(staging)
 
 # Split the C3 signal into 30-second windows (not-overlapping).
 epochs = segment(signal, signal.fs * 30)
