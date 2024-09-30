@@ -18,6 +18,7 @@ export remove_channel!
 export plot_eeg
 export artifact_reject
 
+export AmplitudeSpectrum
 export PSD 
 export Spectrogram
 export plot_spectrogram 

@@ -1,4 +1,35 @@
-
+"""
+Structure for amplitude spectrum estimations. Estimations are by default 
+one sided, with frequencies ranging from [0, fₛ/2].
+The formula used is 
+```math 
+\\frac{2|H(f)|}{\\sum_i w_i}
+```
+with ``w_i`` a Hanning window.
+# Fields
+- `freq::Vector{<:AbstractFloat}`: Frequency range of the spectrum
+- `spectrum::Vector{<:AbstractFloat}`: Estimated spectral amplitude
+# Constructors
+`AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)` : Computes a direct PSD over a signal `x` with a given `sampling_rate`.
+"""
+struct AmplitudeSpectrum
+    freq::Vector{<:AbstractFloat}
+    spectrum::Vector{<:AbstractFloat}
+    function AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer=0)
+        if pad > 0
+            x = zero_pad(x, pad)
+        end
+        N = length(x)
+        hann = hanning(N) # Hanning window
+        x = x .* hann
+        ft = abs.(fft(x))
+        ft = ft[1:(div(N, 2)+1)] # Make one sided
+        freq = [i for i in 0:(length(ft)-1)] .* sampling_rate / N
+        normalization = 2 / (sum(hann .^ 2))
+        spectrum = ft * normalization
+        new(freq, spectrum)
+    end
+end
 
 """
 Structure for PSD estimations. Estimations are by default 
@@ -47,7 +78,6 @@ struct PSD
         N = length(x)
         hann = hanning(N) # Hanning window
         x = x .* hann
-        print(length(x))
         ft = abs2.(fft(x))
         ft = ft[1:(div(N, 2)+1)] # Make one sided
         freq = [i for i in 0:(length(ft)-1)] .* fs / N
