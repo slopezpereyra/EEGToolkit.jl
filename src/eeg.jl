@@ -1,5 +1,5 @@
 """
-A struct for the EEG data type.
+A struct for the EEG data type. An EEG is simply conceived as a collection of labeled time series.
 
 # Fields
 - `signals::Dict{String, TimeSeries}`: A dictionary mapping signal labels (strings) to arrays of floating-point values.
