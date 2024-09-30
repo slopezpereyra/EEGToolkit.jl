@@ -53,15 +53,23 @@ Returns a vector of vectors `V` s.t. the `i`th vector in `V`
 contains the epochs which comprise the `i`th NREM period. Thus,
 the length of `V` is `k` the number of NREM periods.
 
-The `staging` field of the EEG must have been set to a vector 
-containing only the symbols `1, …, 6, ?` where `5` denotes 
-REM, `6` denotes wakefulness, and `?` denotes unscored/unstaged.
+The `n` parameter is the number of (not necessarily consecutive) 
+epochs which comprise a NREM period. The `m` parameter is the 
+number of REM or wakefulness epochs required to mark the end 
+of a NREM period (if `n` NREM epochs were parsed before) or to 
+disregard the current sequence and begin parsing from the next 
+NREM epoch.
+
+The `staging` parameter is a vector containing only the 
+symbols `1, …, 6, ?` where `5` denotes REM, `6` denotes 
+wakefulness, and `?` denotes unscored/unstaged.
 """
 function nrem(staging::Vector, n::Integer=30, m::Integer=10)
 
     if Set(unique(staging)) ⊈ Set(["1", "2", "3", "4", "5", "6", "?"])
-        @error "Invalid stage score: Sleep stages should be 1, 2, 3, 4, 5, 6, ?, 
+        e = "Invalid stage score: Sleep stages should be 1, 2, 3, 4, 5, 6, ?, 
         where 5 marks REM, 6 wakefulness, and ? unknown/unscored."
+        throw( ArgumentError(e) )
     end
 
     α = stage_to_word(staging, m)
@@ -78,10 +86,16 @@ function nrem(staging::Vector, n::Integer=30, m::Integer=10)
         push!(locs, [s, e])
     end
 
+    if length(locs) == 0 
+        print("No NREM periods found. Returning nothing...")
+        return nothing
+    end
+
     # Keep only first and last matches.
     locs = [locs[1], locs[length(locs)]]
     s = (locs[1][2])
     e = locs[length(locs)][1] - 1
+
     
     # ------------------------------------
     # Finding middle NREM periods.
