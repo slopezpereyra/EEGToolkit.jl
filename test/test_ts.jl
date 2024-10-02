@@ -1,6 +1,8 @@
 include("../src/ts.jl")
 using Dates
 using Test
+using Plots
+using Statistics
 
 function gen_ts()
     x = [0.1, 0.2, 0.3, 0.4, 0.5]  # Example time series data
@@ -65,15 +67,38 @@ end
     epoch_ts = epoch(ts, 1; epoch_length=1)
     @test epoch_ts.x == [0.1, 0.2]  # First epoch is the first 30 seconds of data
     @test epoch_ts.fs == 2  # fₛ should remain unchanged
+    @test_throws ArgumentError epoch(ts, 3; epoch_length=1)
+    @test_throws ArgumentError epoch(ts, 0; epoch_length=1)
     
     # Test multiple epochs extraction
    
-    ts = TimeSeries([float( i ) for i in range(1, 1000)], 10)  # Create a TimeSeries with 1000 data points, fs = 10Hz
+    ts = TimeSeries([float( i ) for i in range(1, 1000)], 10)  # Create a TimeSeries with 1000 data points, fs = 10Hz, 3 and something epohcs
     epoch_ts = epoch(ts, 1, 3)  # Extract epochs 1-3
     @test epoch_ts.x == collect(1:900)  # Should return 900 data points (30 seconds of data from each epoch)
+    @test_throws ArgumentError epoch(ts, 1, 4)
 end
 
 # Test helper functions
 @testset "Helper function tests" begin
     @test seconds_to_time(3661.123) == Time(1, 1, 1, 123)  # Convert seconds to Time object
+end
+
+@testset "plot_ts tests" begin
+    # Create random data with 30
+    ts = TimeSeries(rand(1200), 10)
+    plot_ts(ts, 1, 2)
+    # Test 1: Ensure the function runs without errors for a range
+    @test plot_ts(ts, 1, 2) isa Plots.Plot
+
+    # Test 2: Ensure the function runs without errors for a single epoch
+    @test plot_ts(ts, 1, 2) isa Plots.Plot
+
+    # Test 3: Ensure the function runs without errors with normalization
+    @test plot_ts(ts, 1, 2; norm=true) isa Plots.Plot
+
+    # Test 4: Ensure the function returns a plot for full series
+    @test plot_ts(ts) isa Plots.Plot
+
+    # Test 5: Check invalid parameters
+
 end
