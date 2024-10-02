@@ -201,7 +201,14 @@ end
 Returns a vector `[x₁, …, xₖ]` with all values `xᵢ` corresponding to the `n`th epoch in the signal.
 """
 function epoch(signal::TimeSeries, n::Integer; epoch_length::Integer = 30)
-    y = signal.x[((n - 1) * signal.fs * epoch_length) + 1:n * signal.fs * epoch_length]
+    epoch_start = ((n - 1) * signal.fs * epoch_length) + 1
+    epoch_end = n * signal.fs * epoch_length
+    if  epoch_start < 0 || epoch_end > length(signal.x)
+        msg = "The epoch provided to the `epoch` function does not exist in the 
+            signal, because it exceeds its duration or is negative"
+        throw(ArgumentError(msg))
+    end
+    y = signal.x[epoch_start:epoch_end]
     TimeSeries(y, signal.fs)
 end
 
@@ -218,7 +225,14 @@ function epoch(signal::TimeSeries, n::Integer, m::Integer; epoch_length::Integer
     if (n > m)
         throw(ArgumentError("The second epoch should be greater than the first."))
     end
-    y = signal.x[((n - 1) * signal.fs * epoch_length) + 1:m * signal.fs * epoch_length]
+    epoch_start = ((n - 1) * signal.fs * epoch_length) + 1
+    epoch_end = m * signal.fs * epoch_length
+    if  epoch_start < 0 || epoch_end > length(signal.x)
+        msg = "The epoch provided to the `epoch` function does not exist in the 
+            signal, because it exceeds its duration or is negative"
+        throw(ArgumentError(msg))
+    end
+    y = signal.x[epoch_start:epoch_end]
     TimeSeries(y, signal.fs)
 end
 
