@@ -64,7 +64,7 @@ The return value ensures type-safety but the warning is raised because
 splitting a vector over its length is potentially 
 a programming mistake.
 """
-function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0, symmetric=false) where {T}
+function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0, symmetric=false)::Vector{Vector{T}} where {T}
     if L > length(v)
         throw(ArgumentError("Segment length L must be less than or equal to the length of the vector."))
     end
@@ -73,7 +73,7 @@ function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0
     end
 
     if L == length(v)
-        @warn("In the `segment` function, the length `L` of each segment was set to the length of `v`. Returning `v`.")
+        @warn("In the `segment` function, the length `L` of each segment was set to the length of `v`. Returning a vector containing `v`; id est, [ v ]`.")
         return [v]
     end
 
@@ -105,7 +105,7 @@ function segment(v::Vector{T}, L::Int; overlap::Union{<:AbstractFloat,Integer}=0
     if symmetric && length( last(res) ) != L
         pop!(res)
     end
-    
+
     return(res)
 end
 
@@ -115,7 +115,7 @@ end
 Wrapper to segment the vector `ts.x` in the time 
 series `ts`.
 """
-function segment(ts::TimeSeries, L::Int; kargs...)
+function segment(ts::TimeSeries, L::Int; kargs...)::Vector{Vector{<:AbstractFloat}}
     segment(ts.x, L; kargs...)
 end
 
@@ -124,7 +124,7 @@ end
 
 Helper function: maps a time in seconds to a Time object.
 """
-function seconds_to_time(seconds::Union{AbstractFloat, Integer})
+function seconds_to_time(seconds::Union{AbstractFloat, Integer})::Time
     # Calculate the components
     hours = floor(Int, seconds / 3600)
     minutes = floor(Int, (seconds % 3600) / 60)
@@ -167,7 +167,7 @@ julia> gen_time_domain(500, 600, 6000)
  01:40:00
 ```
 """
-function gen_time_domain(fs::Integer, s::Union{Integer, AbstractFloat}, e::Union{Integer, AbstractFloat})
+function gen_time_domain(fs::Integer, s::Union{Integer, AbstractFloat}, e::Union{Integer, AbstractFloat})::Vector{Time}
     start_time_obj = seconds_to_time(s)
     step = 1 / fs
     L = length(collect(1:step:e-s+1))
@@ -180,7 +180,7 @@ end
 Generates a vector of Time objects representing the time instances ``t_1, \\ldots, t_n`` in
 a `TimeSeries` signal from epoch ``s`` to epoch ``e``. 
 """
-function gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer}; epoch_length::Integer = 30)
+function gen_time_domain(signal::TimeSeries, s::Union{AbstractFloat,Integer}, e::Union{AbstractFloat,Integer}; epoch_length::Integer = 30)::Vector{Time}
     gen_time_domain(signal.fs, s*epoch_length, e*epoch_length)
 end
 
@@ -190,7 +190,7 @@ end
 Generates a vector of Time objects representing the time instances ``t_1, \\ldots, t_n`` in
 a `TimeSeries` signal, starting at `00:00:init` where `init` is ``\\frac{1}{f_s}``.
 """
-function gen_time_domain(signal::TimeSeries)
+function gen_time_domain(signal::TimeSeries)::Vector{Time}
     gen_time_domain(signal.fs, 0, length(signal.x) / signal.fs)
 end
 
@@ -200,7 +200,7 @@ end
 
 Returns a vector `[x₁, …, xₖ]` with all values `xᵢ` corresponding to the `n`th epoch in the signal.
 """
-function epoch(signal::TimeSeries, n::Integer; epoch_length::Integer = 30)
+function epoch(signal::TimeSeries, n::Integer; epoch_length::Integer = 30)::TimeSeries
     epoch_start = ((n - 1) * signal.fs * epoch_length) + 1
     epoch_end = n * signal.fs * epoch_length
     if  epoch_start < 0 || epoch_end > length(signal.x)
@@ -218,7 +218,7 @@ end
 Returns a vector `[x₁, …, xₖ]` with all indexes corresponding to epochs `n, n+1, …, m` of the EEG.
 The default sampling rate is used to compute the indexes.
 """
-function epoch(signal::TimeSeries, n::Integer, m::Integer; epoch_length::Integer = 30)
+function epoch(signal::TimeSeries, n::Integer, m::Integer; epoch_length::Integer = 30)::TimeSeries
     if (n == m)
         return epoch(signal, n)
     end
@@ -242,7 +242,7 @@ end
 
 Plots `TimeSeries` from epoch `s` to epoch `e`. The series many be normalized.
 """
-function plot_ts(ts::TimeSeries, s::Integer, e::Integer; norm=false, ylab="Amplitude (uV)")
+function plot_ts(ts::TimeSeries, s::Integer, e::Integer; norm=false, ylab="Amplitude (uV)")::Plots.Plot
     t = gen_time_domain(ts, s, e+1)
     ts = epoch(ts, s, e)
     y = norm ? ts.x .- mean(ts.x) ./ std(ts.x) : ts.x
@@ -255,7 +255,7 @@ end
 
 Plots `TimeSeries` at epoch `s`.
 """
-function plot_ts(ts::TimeSeries, s::Integer; kargs...)
+function plot_ts(ts::TimeSeries, s::Integer; kargs...)::Plots.Plot
     plot_ts(ts, s, s; kargs...)
 end
 
@@ -264,7 +264,7 @@ end
 
 Plots `TimeSeries`. The series may be normalized.
 """
-function plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")
+function plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")::Plots.Plot
     t = gen_time_domain(ts)
     y = norm ? ts.x .- mean(ts.x) ./ std(ts.x) : ts.x
     p = plot(t, y, ylabel = ylab, xlabel = "Time");
