@@ -47,15 +47,18 @@ SPECT2 =
     ε = 0.001
     edf_file = "edfs/37bl.edf"
     eeg = EEG(edf_file)
-    
-    filter!(p -> startswith(first(p), "EEG"), eeg.signals)
-    @test collect(keys(eeg.signals)) == DESIRED_CHANNELS
+   
+    filter_channels!(eeg, p -> startswith(first(p), "EEG"))
+    remaining_channels = get_Channels(eeg)
+#    filter!(p -> startswith(first(p), "EEG"), eeg.signals)
+    @test collect(keys(remaining_channels)) == DESIRED_CHANNELS
 
-    s = epoch(eeg.signals["EEG C4-A1"], 10, 11) #OBSOLETE
-    seg = segment(s, 100)
+    signal = epoch(get_channel(eeg, "EEG C4-A1"), 10, 11) 
+    fs = signal.fs
+
+    seg = segment(signal, 100)
     @test length(seg) == 300 
 
-    fs = eeg.signals["EEG C4-A1"].fs
 
     psd1 = PSD(seg[1], fs; dB=true)
     @test all(x -> x < ε, abs.(psd1.spectrum[1:10] .- SPECT1))

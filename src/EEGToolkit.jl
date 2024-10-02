@@ -14,6 +14,10 @@ export plot_ts
 export seconds_to_time
 
 export EEG
+export get_channel 
+export get_channels 
+export filter_channels 
+export filter_channels!
 export remove_channel! 
 export plot_eeg
 export artifact_reject

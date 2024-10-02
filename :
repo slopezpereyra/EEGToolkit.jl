@@ -66,7 +66,6 @@ results.
 TimeSeries
 segment
 epoch
-gen_time_domain
 ```
 
 ## EEG
@@ -74,7 +73,6 @@ gen_time_domain
 
 ```@docs
 EEG
-filter_by_stage 
 remove_channel!
 plot_eeg
 artifact_reject
@@ -187,7 +185,7 @@ staging = some_function_to_read_csv("my_staging_data.csv")
 eeg = EEG(edf_file, staging.STAGES)
 
 # We extract the TimeSeries object corresponding to C3-A2
-signal = eeg.signals["C3-A2"]
+signal = get_channel(eeg, "C3-A2")
 
 # Detect the NREM periods
 nrems = nrem(eeg)

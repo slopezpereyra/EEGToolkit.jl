@@ -184,7 +184,7 @@ staging = staging_df.STAGES
 eeg = EEG(edf_file)
 
 # We extract the TimeSeries object corresponding to C3-A2
-signal = eeg.signals["C3-A2"]
+signal = get_channel(eeg, "C3-A2") 
 
 # Detect the NREM periods with default parameters.
 nrems = nrem(staging)
