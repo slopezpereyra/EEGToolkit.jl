@@ -84,7 +84,7 @@ end
 end
 
 @testset "plot_ts tests" begin
-    # Create random data with 30
+    # Create random data with 30 epochs
     ts = TimeSeries(rand(1200), 10)
     plot_ts(ts, 1, 2)
     # Test 1: Ensure the function runs without errors for a range
