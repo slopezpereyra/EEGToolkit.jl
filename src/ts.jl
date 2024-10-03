@@ -15,12 +15,29 @@ struct TimeSeries
     end
 end
 
+function epoch_to_indexes(n::Integer, fs::Integer, epoch_length::Integer)::Tuple{Integer, Integer}
+    s = ((n - 1) * fs * epoch_length) + 1
+    e = n * fs * epoch_length
+    (s, e)
+end
+
+function epochs_to_indexes(n::Integer, m::Integer, fs::Integer, epoch_length::Integer)::Tuple{Integer, Integer}
+    s = ((n - 1) * fs * epoch_length) + 1
+    e = m * fs * epoch_length
+    (s, e)
+end
+
 function length_in_secs(ts::TimeSeries)
     length(ts.x)/ts.fs
 end
 
 function length_in_mins(ts::TimeSeries)
     length_in_secs(ts)/60
+end
+
+function num_epochs(ts::TimeSeries, epoch_length::Int)::Int
+    total_duration = length(ts.x) / ts.fs
+    floor(Int, total_duration / epoch_length)
 end
 
 function length_in_hours(ts::TimeSeries)
@@ -201,14 +218,13 @@ end
 Returns a vector `[x₁, …, xₖ]` with all values `xᵢ` corresponding to the `n`th epoch in the signal.
 """
 function epoch(signal::TimeSeries, n::Integer; epoch_length::Integer = 30)::TimeSeries
-    epoch_start = ((n - 1) * signal.fs * epoch_length) + 1
-    epoch_end = n * signal.fs * epoch_length
-    if  epoch_start < 0 || epoch_end > length(signal.x)
+    range = epoch_to_indexes(n, signal.fs, epoch_length)
+    if  range[1] < 0 || range[2] > length(signal.x)
         msg = "The epoch provided to the `epoch` function does not exist in the 
             signal, because it exceeds its duration or is negative"
         throw(ArgumentError(msg))
     end
-    y = signal.x[epoch_start:epoch_end]
+    y = signal.x[range[1]:range[2]]
     TimeSeries(y, signal.fs)
 end
 
@@ -225,14 +241,13 @@ function epoch(signal::TimeSeries, n::Integer, m::Integer; epoch_length::Integer
     if (n > m)
         throw(ArgumentError("The second epoch should be greater than the first."))
     end
-    epoch_start = ((n - 1) * signal.fs * epoch_length) + 1
-    epoch_end = m * signal.fs * epoch_length
-    if  epoch_start < 0 || epoch_end > length(signal.x)
+    range = epochs_to_indexes(n, m, signal.fs, epoch_length)
+    if  range[1] < 0 || range[2] > length(signal.x)
         msg = "The epoch provided to the `epoch` function does not exist in the 
             signal, because it exceeds its duration or is negative"
         throw(ArgumentError(msg))
     end
-    y = signal.x[epoch_start:epoch_end]
+    y = signal.x[range[1]:range[2]]
     TimeSeries(y, signal.fs)
 end
 
@@ -271,3 +286,55 @@ function plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")::Plots.Plot
     return(p)
 end
 
+"""
+`artifact_reject(signal::TimeSeries, anom_matrix::Matrix; epoch_length::Integer=30, subepoch_length::Integer=5)`
+
+
+This  function  requires  `TimeSeries`   and  an  anomaly  matrix  ``A``, 
+and has epoch and subepoch lengths (in seconds) as optional parameters.
+An anomaly matrix ``A  \\in  \\mathbb{N}^{n  \\times  2}``  is  a  matrix which holds
+epoch-subepoch   pairs   that   contain    artifacts    in    a    `TimeSeries`.
+Each row ``(n, m)`` of ``A`` denotes that the ``n``th epoch contained 
+an artifact within sub-epoch ``m``. 
+
+The function   removes   from   the   signal   the   epoch-subepoch    pairs    containing
+artifacts. In particular, this function returns a 
+`Vector{Vector{T}}` with `T<:AbstractFloat`. Thus, if 
+`result`   holds   the   return   value   of    this    function,    `result[i]`
+contains   what   is   left   from    the    `i`th    epoch    after    removing
+its   contaminated   sub-epochs.   It   is   possible   that   `result[i]`    is
+empty, if all sub-epochs of epoch `i` contained artifacts.
+"""
+function artifact_reject(signal::TimeSeries, anom_dict::Dict{Int, Vector{Int}}; epoch_length::Integer=30, subepoch_length::Integer=5)::Vector{Vector{<:AbstractFloat}}
+
+    if any(x -> x < 0 || x > num_epochs(signal, epoch_length), keys(anom_dict))
+        msg = "The `anom_dict` argument contains keys greater than the number of epochs in the `signal` or 
+        non-positive."
+        throw( ArgumentError(msg)  )
+    end
+
+    T = typeof(signal.x[1])
+    
+    epochs = segment(signal, signal.fs * epoch_length; symmetric = true)
+    windows = map(e -> segment(e, signal.fs * subepoch_length; symmetric=true), epochs)
+    
+    for (epoch, subepochs) in anom_dict
+        deleteat!(windows[epoch], sort(subepochs))
+    end
+    
+    [Vector{T}(vcat(window...)) for window in windows]
+end
+
+
+"""
+`artifact_reject(signal::TimeSeries, anoms::Vector{Integer}; epoch_length::Integer=30)`
+
+An anomaly vector ``\\vec{x} \\in \\mathbb{N}^{n}`` is a sorted vector
+whose values are those epochs in an `TimeSeries` that contain 
+anomalies or artifacts. This function segments the TimeSeries and filters out all 
+epochs containing artifacts.
+"""
+function artifact_reject(signal::TimeSeries, anoms::Vector{Integer}; epoch_length::Integer=30)
+    epochs = segment(signal, signal.fs * epoch_length; symmetric = true)
+    deleteat!( epochs, anoms )
+end
