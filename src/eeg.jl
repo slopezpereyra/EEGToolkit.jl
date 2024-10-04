@@ -9,8 +9,7 @@ A struct for the EEG data type. An EEG is simply conceived as a collection of la
 
 # Example
 ```julia
-staging_vector = CSV.read("path/to/stage_data/eeg_staging.csv") # A vector with a stage per each epoch in the EEG
-eeg_data = EEG("path/to/edf_data/data.edf"; staging=staging_vector)
+eeg_data = EEG("path/to/edf_data/data.edf")
 ```
 """
 struct EEG
@@ -35,7 +34,9 @@ struct EEG
 end
 
 """
-example: p -> startswith(first(p), "EEG")
+get_channels(eeg::EEG)::Dict{String, TimeSeries}
+
+Returns the cannels in the `eeg`.
 """
 function get_channels(eeg::EEG)::Dict{String, TimeSeries}
     return(eeg._signals)
@@ -43,21 +44,38 @@ end
 
 
 """
-example: p -> startswith(first(p), "EEG")
+get_channel(eeg::EEG)::TimeSeries
+
+Returns the channel named `channel_name` from the `eeg`.
+
 """
 function get_channel(eeg::EEG, channel_name::String)::TimeSeries
     eeg._signals[channel_name]
 end
 
 """
-example: p -> startswith(first(p), "EEG")
+filter_channels(eeg::EEG, filter_function::Function)::Dict{String, TimeSeries}
+
+Applies a `filter_function` to the dictionary which maps channel 
+names to time series, and returns the filtered result.
+
+Example: `filter_channel(eeg, p -> startswith(first(p), "C"))` would return 
+only those EEG channels whose names begin with "C". 
+
 """
 function filter_channels(eeg::EEG, filter_function::Function)::Dict{String, TimeSeries}
     filter(filter_function, eeg._signals)
 end
 
 """
-example: p -> startswith(first(p), "EEG")
+filter_channels!(eeg::EEG, filter_function::Function)::Dict{String, TimeSeries}
+
+Applies by reference a `filter_function` to the dictionary which maps channel 
+names to time series. 
+
+Example: `filter_channel(eeg, p -> startswith(first(p), "C"))` would keep 
+only those EEG channels whose names begin with "C". 
+
 """
 function filter_channels!(eeg::EEG, filter_function::Function)
     filter!(filter_function, eeg._signals)
