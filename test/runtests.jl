@@ -4,4 +4,8 @@
 using EEGToolkit 
 using Test 
 
-@test true == true
+include("test_ts.jl")
+include("test_psd.jl")
+include("test_package.jl")
+include("test_artifact_rejection.jl")
+include("test_nrem.jl")

@@ -1,6 +1,3 @@
-include("src/ts.jl")
-include("src/eeg.jl")
-using Test
 
 @testset "Artifact Rejection Tests" begin
 

@@ -24,7 +24,7 @@ struct EEG
         eeg = EDF.read(file)
         S = Dict()
 
-        for signal in eeg._signals
+        for signal in eeg.signals
             x = EDF.decode(signal)
             fs = Int(signal.header.samples_per_record / eeg.header.seconds_per_record)
             S[signal.header.label] = TimeSeries(x, fs)

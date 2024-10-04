@@ -1,6 +1,3 @@
-include("../src/ts.jl") 
-include("../src/psd.jl")
-using Test
 using DSP
 using FFTW
 using Statistics

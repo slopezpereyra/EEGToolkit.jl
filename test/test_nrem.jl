@@ -1,5 +1,3 @@
-include("../src/nrem.jl")
-using Test
 
 # Helper function for running the tests
 function run_nrem_tests()

@@ -1,5 +1,3 @@
-using EEGToolkit
-using Test
 
 
 DESIRED_CHANNELS = 
@@ -45,11 +43,11 @@ SPECT2 =
 
 @testset "EEGToolkit.jl" begin
     ε = 0.001
-    edf_file = "edfs/37bl.edf"
+    edf_file = "../edfs/37bl.edf"
     eeg = EEG(edf_file)
    
     filter_channels!(eeg, p -> startswith(first(p), "EEG"))
-    remaining_channels = get_Channels(eeg)
+    remaining_channels = get_channels(eeg)
 #    filter!(p -> startswith(first(p), "EEG"), eeg.signals)
     @test collect(keys(remaining_channels)) == DESIRED_CHANNELS
 
@@ -62,10 +60,10 @@ SPECT2 =
 
     psd1 = PSD(seg[1], fs; dB=true)
     @test all(x -> x < ε, abs.(psd1.spectrum[1:10] .- SPECT1))
-    psd2 = PSD(s.x, fs, fs*5; dB=true)
+    psd2 = PSD(signal.x, fs, fs*5; dB=true)
     @test all(x -> x < ε, abs.(psd2.spectrum[1:10] .- SPECT2))
 
-    spec = Spectrogram(s.x, fs*30, x -> PSD(x, fs, fs*5); dB=true)
+    spec = Spectrogram(signal.x, fs*30, x -> PSD(x, fs, fs*5); dB=true)
     @test abs(spec.spectrums[1,3] - 16.775304018633083) < ε
     @test abs(spec.spectrums[2,1200] - -51.80621574940826) < ε
 

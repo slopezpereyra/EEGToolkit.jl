@@ -1,6 +1,4 @@
-include("../src/ts.jl")
 using Dates
-using Test
 using Plots
 using Statistics
 

@@ -12,6 +12,10 @@ export segment
 export epoch 
 export plot_ts
 export seconds_to_time
+export length_in_secs
+export length_in_mins
+export length_in_hours
+export gen_time_domain
 
 export EEG
 export get_channel 

@@ -1,3 +1,11 @@
+function compute_spectrum(x::Vector{<:AbstractFloat}, fs::Integer, windowing::Vector{<:AbstractFloat}, norm_factor::Integer)
+    ft = abs2.(fft(x))[1:(div(length(x), 2)+1)]
+    freq = [i for i in 0:(length(ft)-1)] .* fs / length(x)
+    normalization = 1 / (sum(windowing .^ 2) * norm_factor)
+    spectrum = 2 * ft * normalization
+    return freq, spectrum
+end
+
 """
 Structure for amplitude spectrum estimations. Estimations are by default 
 one sided, with frequencies ranging from [0, fₛ/2].
@@ -63,7 +71,7 @@ a normalization factor defaulting to `2 * seg_length`.
 
 # Constructors
 - `PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)`: Computes a direct PSD over a signal `x` with sampling rate `fs`. The signal may be padded to an optional length `pad`. An optional normalization factor `norm_factor` may be used. Set `dB` to true to transform the spectrum to decibels.
-- `PSD(x::Vector, fs::Int, seg_length::Int; overlap::Union{ <:AbstractFloat, Integer }=0.5, normalization::Union{ <:AbstractFloat, Integer } = -1, pad::Integer=0, dB=false)`: Splits the signal `x` into segments of length `seg_length` with an `overlap` in [0, 1) (defaults to 0.5). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. The estimation is normalized with a `normalization` that defaults to ``2Mk'``, where `M` is the number of segments and `k'` is the number of samples in each segment (i.e. `seg_length`). Setting `overlap` to zero equates to using Barlett's method. Setting `overlap` greater than zero equates to using Welch's method. 
+- `PSD(x::Vector, fs::Int, seg_length::Int; overlap::Union{ <:AbstractFloat, Integer }=0.5, normalization::Union{ <:AbstractFloat } = nothing, dB=false)`: Splits the signal `x` into segments of length `seg_length` with an `overlap` in [0, 1) (defaults to 0.5). The overlap is understood to be a fraction of the segment length. PSD is estimated within and averaged across all segments. The estimation is normalized with a `normalization` that defaults to ``2Mk'``, where `M` is the number of segments and `k'` is the number of samples in each segment (i.e. `seg_length`). Setting `overlap` to zero equates to using Barlett's method. Setting `overlap` greater than zero equates to using Welch's method. 
 - `PSD(ts::TimeSeries; kargs...)` : Wrapper to apply the first constructor to a TimeSeries signal.
 - `PSD(ts::TimeSeries, seg_length::Integer; kargs...)`: Wrapper to apply the second constructor (Welch or Barlett's method) to a TimeSeries signal.
 """
@@ -71,46 +79,31 @@ struct PSD
     freq::Vector{<:AbstractFloat}
     spectrum::Vector{<:AbstractFloat}
 
-    function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)
-        if pad > 0
-            x = zero_pad(x, pad)
-        end
+     function PSD(x::Vector{<:AbstractFloat}, fs::Integer; pad::Integer=0, norm_factor=1, dB=false)
+        x = (pad > 0) ? zero_pad(x, pad) : x
         N = length(x)
-        hann = hanning(N) # Hanning window
+        hann = hanning(N) 
         x = x .* hann
-        ft = abs2.(fft(x))
-        ft = ft[1:(div(N, 2)+1)] # Make one sided
-        freq = [i for i in 0:(length(ft)-1)] .* fs / N
-        normalization = 1 / (sum(hann .^ 2) * norm_factor)
-        spectrum = 2 * ft * normalization
-        if dB 
-            spectrum = pow2db.(spectrum)
-        end
+        freq, spectrum = compute_spectrum(x, fs, hann, norm_factor)
+        spectrum = dB ? pow2db.(spectrum) : spectrum
         new(freq, spectrum)
-    end
+     end
+
 
     function PSD(x::Vector{<:AbstractFloat}, fs::Int, seg_length::Integer;
                 overlap::Union{<:AbstractFloat,Integer} = 0.5, 
-                normalization::Union{<:AbstractFloat,Integer}=-1,
-                pad::Integer=0,
+                normalization::Union{<:AbstractFloat,Nothing}=nothing,
                 dB = false)
 
-
         segs = segment(x, seg_length; overlap=overlap, symmetric=true)
-        M = length(segs)
-        psds = map(x -> PSD(x, fs), segs)
+        psds = map(s -> PSD(s, fs), segs)
         freq = psds[1].freq
         spectrums = [psd.spectrum for psd in psds]
 
-        # Default to Hans normalization: denominator = 2 * M * length(segs[1])
-        if (normalization == -1)
-            normalization = 2 * seg_length # seg_length = length(segs[1])
-        end
-        w = sum(spectrums) / (M * normalization)   
-        if dB 
-            w = pow2db.(w)
-        end
-        new(freq, w)
+        norm_factor = isnothing(normalization) ? 2 * seg_length : normalization
+        avg_spectrum = sum(spectrums) / (length(segs) * norm_factor)
+        avg_spectrum = dB ? pow2db.(avg_spectrum) : avg_spectrum
+        new(freq, avg_spectrum)
     end
 
     function PSD(ts::TimeSeries; kargs...)
