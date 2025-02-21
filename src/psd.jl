@@ -117,6 +117,36 @@ struct PSD
   end
 end
 
+
+"""
+
+Perform a standardized analysis of an EEG signal. This analysis procedure 
+succesfully replicated results from Washington State University in collaboration
+with the developer's laboratory at UPenn. 
+
+The standardized procedure is as follows: split the signal into 30-sec epochs,
+each of which is split into 5-sec sub-epochs. Each epoch's spectrum is the 
+aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated 
+spectra from its epochs.
+
+"""
+function standard_eeg_analysis(epochs, fs)
+  spectrums = []
+
+  # Drop last segment if it isn't a full epoch.
+  if length(epochs[end]) > length(epochs[1])
+    epochs = epochs[1:length(epochs)-1]
+  end
+
+  psd = Nothing
+  for epoch in epochs 
+      subepochs = segment(epoch, fs*5; symmetric=true)
+      psd = PSD(subepochs, fs; normalization=1, window_function=rect)
+      push!(spectrums, psd.spectrum)
+  end
+  return psd.freq, spectrums
+end
+
 """
 A spectrogram is a matrix ``S^{M \\times F}`` where ``M`` is the number of windows in 
 the windowing of a signal and ``F`` is the length of the spectrum vector in any given window (i.e. the frequency resolution). It is useful to observe spectral changes in time or to compute the 
@@ -310,4 +340,10 @@ function mean_band_power(spec::PSD, lower::AbstractFloat, upper::AbstractFloat)
   band = freq_band(spec, lower, upper)
   mean(band)
 end
+
+
+
+
+
+
 
