@@ -14,22 +14,22 @@ with ``w_i`` a Hanning window.
 `AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer)` : Computes a direct PSD over a signal `x` with a given `sampling_rate`.
 """
 struct AmplitudeSpectrum
-    freq::Vector{<:AbstractFloat}
-    spectrum::Vector{<:AbstractFloat}
-    function AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer=0)
-        if pad > 0
-            x = zero_pad(x, pad)
-        end
-        N = length(x)
-        hann = hanning(N) # Hanning window
-        x = x .* hann
-        ft = abs.(fft(x))
-        ft = ft[1:(div(N, 2)+1)] # Make one sided
-        freq = [i for i in 0:(length(ft)-1)] .* sampling_rate / N
-        normalization = 2 / (sum(hann .^ 2))
-        spectrum = ft * normalization
-        new(freq, spectrum)
+  freq::Vector{<:AbstractFloat}
+  spectrum::Vector{<:AbstractFloat}
+  function AmplitudeSpectrum(x::Vector{<:AbstractFloat}, sampling_rate::Integer, pad::Integer=0)
+    if pad > 0
+      x = zero_pad(x, pad)
     end
+    N = length(x)
+    hann = hanning(N) # Hanning window
+    x = x .* hann
+    ft = abs.(fft(x))
+    ft = ft[1:(div(N, 2)+1)] # Make one sided
+    freq = [i for i in 0:(length(ft)-1)] .* sampling_rate / N
+    normalization = 2 / (sum(hann .^ 2))
+    spectrum = ft * normalization
+    new(freq, spectrum)
+  end
 end
 
 """
@@ -71,50 +71,81 @@ a normalization factor defaulting to `1`.
 - `PSD(ts::TimeSeries, seg_length::Integer; kargs...)`: Wrapper to apply the third constructor to a TimeSeries signal.
 """
 struct PSD
-    freq::Vector{<:AbstractFloat}
-    spectrum::Vector{<:AbstractFloat}
+  freq::Vector{<:AbstractFloat}
+  spectrum::Vector{<:AbstractFloat}
 
-     function PSD(x::Vector{<:AbstractFloat}, fs::Integer; window_function::Function = hanning, pad::Integer=0, normalization::Real=1)
-        # Pad if necessary
-        x = (pad > 0) ? zero_pad(x, pad) : x
-        
-        N = length(x)
-        W = window_function(N) 
-        x = x .* W
-        
-        # Compute the FFT
-        ft = abs2.(fft(x))[1:(div(length(x), 2)+1)]
-        freq = [i for i in 0:(length(ft)-1)] .* fs / length(x)
-        spectrum = 2 * ft / ( sum(W .^2 ) * normalization )
-        new(freq, spectrum)
-     end
+  function PSD(x::Vector{<:AbstractFloat}, fs::Integer; window_function::Function = hanning, pad::Integer=0, normalization::Real=1)
+    # Pad if necessary
+    x = (pad > 0) ? zero_pad(x, pad) : x
 
+    N = length(x)
+    W = window_function(N) 
+    x = x .* W
 
-    function PSD(segs::Vector{Vector{T}}, fs::Integer; window_function::Function = hanning, normalization::Real=1) where {T<:AbstractFloat}
-        psds = map(s -> PSD(s, fs; window_function=window_function), segs)
-        segment_length = length(segs[1])
-        freq = psds[1].freq
-        mean_spectrum = mean( [psd.spectrum for psd in psds] ) / ( normalization * segment_length )
-        new(freq, mean_spectrum)
-    end
-
-    function PSD(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer;
-                overlap::Union{<:AbstractFloat,Integer} = 0.5, window_function::Function=hanning,
-                normalization::Real=1)
-
-        segs = segment(x, seg_length; overlap=overlap, symmetric=true)
-        PSD(segs, fs; window_function=window_function, normalization=normalization)
-    end
+    # Compute the FFT
+    ft = abs2.(fft(x))[1:(div(length(x), 2)+1)]
+    freq = [i for i in 0:(length(ft)-1)] .* fs / length(x)
+    spectrum = 2 * ft / ( sum(W .^2 ) * normalization )
+    new(freq, spectrum)
+  end
 
 
+  function PSD(segs::Vector{Vector{T}}, fs::Integer; window_function::Function = hanning, normalization::Real=1) where {T<:AbstractFloat}
+    psds = map(s -> PSD(s, fs; window_function=window_function), segs)
+    segment_length = length(segs[1])
+    freq = psds[1].freq
+    mean_spectrum = mean( [psd.spectrum for psd in psds] ) / ( normalization * segment_length )
+    new(freq, mean_spectrum)
+  end
 
-    function PSD(ts::TimeSeries; kargs...)
-        PSD(ts.x, ts.fs; kargs...)
-    end
-    
-    function PSD(ts::TimeSeries, seg_length::Integer; kargs...)
-        PSD(ts.x, ts.fs, seg_length; kargs...)
-    end
+  function PSD(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer;
+               overlap::Union{<:AbstractFloat,Integer} = 0.5, window_function::Function=hanning,
+               normalization::Real=1)
+
+    segs = segment(x, seg_length; overlap=overlap, symmetric=true)
+    PSD(segs, fs; window_function=window_function, normalization=normalization)
+  end
+
+
+
+  function PSD(ts::TimeSeries; kargs...)
+    PSD(ts.x, ts.fs; kargs...)
+  end
+
+  function PSD(ts::TimeSeries, seg_length::Integer; kargs...)
+    PSD(ts.x, ts.fs, seg_length; kargs...)
+  end
+end
+
+
+"""
+
+Perform a standardized analysis of an EEG signal. This analysis procedure 
+succesfully replicated results from Washington State University in collaboration
+with the developer's laboratory at UPenn. 
+
+The standardized procedure is as follows: split the signal into 30-sec epochs,
+each of which is split into 5-sec sub-epochs. Each epoch's spectrum is the 
+aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated 
+spectra from its epochs.
+
+"""
+function standard_eeg_analysis(epochs, fs)
+  spectrums = []
+
+  # Drop last segment if it isn't a full epoch.
+  if length(epochs[end]) > length(epochs[1])
+    epochs = epochs[1:length(epochs)-1]
+  end
+
+  psd = Nothing
+  for epoch in epochs 
+      subepochs = segment(epoch, fs*5; symmetric=true)
+      psd = PSD(subepochs, fs; normalization=1, window_function=rect)
+      push!(spectrums, psd.spectrum)
+  end
+  return psd.freq, spectrums
+
 end
 
 """
@@ -147,41 +178,41 @@ In this package, mean power in a frequency range is computed with the `mean_band
 - `function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)`: Wrapper constructor for a `TimeSeries` object.
 """
 struct Spectrogram
-    time::Vector
-    freq::Vector{<:AbstractFloat}
-    spectrums::Matrix{<:AbstractFloat}
-    segment_length::Integer
+  time::Vector
+  freq::Vector{<:AbstractFloat}
+  spectrums::Matrix{<:AbstractFloat}
+  segment_length::Integer
 
-    function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}
+  function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}
 
-        if Base.return_types(psd_function) != [PSD]
-            throw(ArgumentError("The `psd_function` should be a function with return type `PSD`"))
-        end
-
-        psds = map(psd_function, segs)
-        freq = psds[1].freq
-        spectrums = [psd.spectrum for psd in psds]
-
-        spectrogram_data = zeros(length(spectrums), length(freq))
-        for i in 1:length(spectrums)
-            spectrogram_data[i, :] = spectrums[i]
-        end
-        
-        if dB 
-            spectrogram_data = pow2db.(spectrogram_data)
-        end
-
-        new(1:length(spectrums), freq, spectrogram_data, length(segs[1]))
+    if Base.return_types(psd_function) != [PSD]
+      throw(ArgumentError("The `psd_function` should be a function with return type `PSD`"))
     end
 
-    function Spectrogram(signal::Vector{<:AbstractFloat}, window_length::Integer, psd_function::Function; overlap::Union{<:AbstractFloat, Integer}=0, dB=false)
-        segs = segment(signal, window_length; overlap=overlap, symmetric=true)
-        Spectrogram(segs, psd_function; dB=dB)
+    psds = map(psd_function, segs)
+    freq = psds[1].freq
+    spectrums = [psd.spectrum for psd in psds]
+
+    spectrogram_data = zeros(length(spectrums), length(freq))
+    for i in 1:length(spectrums)
+      spectrogram_data[i, :] = spectrums[i]
     end
-    
-    function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)
-        Spectrogram(ts.x, ts.fs, window_length, psd_function; kargs...)
+
+    if dB 
+      spectrogram_data = pow2db.(spectrogram_data)
     end
+
+    new(1:length(spectrums), freq, spectrogram_data, length(segs[1]))
+  end
+
+  function Spectrogram(signal::Vector{<:AbstractFloat}, window_length::Integer, psd_function::Function; overlap::Union{<:AbstractFloat, Integer}=0, dB=false)
+    segs = segment(signal, window_length; overlap=overlap, symmetric=true)
+    Spectrogram(segs, psd_function; dB=dB)
+  end
+
+  function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)
+    Spectrogram(ts.x, ts.fs, window_length, psd_function; kargs...)
+  end
 end
 
 
@@ -194,15 +225,15 @@ frequency limit (`freq_lim`) may be set (defaults to 30Hz). The color palette
 """
 function plot_spectrogram(spec::Spectrogram; freq_lim::AbstractFloat=30.0, type::Int=1, color=:nipy_spectral)
 
-    if type == 1
-        return (heatmap(spec.time, spec.freq, spec.spectrums', ylims=(0, freq_lim), color=color))
-    end
+  if type == 1
+    return (heatmap(spec.time, spec.freq, spec.spectrums', ylims=(0, freq_lim), color=color))
+  end
 
-    if type == 2
-        return (surface(spec.time, spec.freq, spec.spectrums', ylims=(0, freq_lim),
-            xlabel="Time", ylabel="Frequency (Hz)", zlabel="PSD (dB)", color=color))
-    end
-    throw(ArgumentError("The plot `type` argument must be either 1 (for heatmap) or 2 (for a surface plot)."))
+  if type == 2
+    return (surface(spec.time, spec.freq, spec.spectrums', ylims=(0, freq_lim),
+                    xlabel="Time", ylabel="Frequency (Hz)", zlabel="PSD (dB)", color=color))
+  end
+  throw(ArgumentError("The plot `type` argument must be either 1 (for heatmap) or 2 (for a surface plot)."))
 end
 
 """
@@ -211,8 +242,8 @@ end
 Plot a PSD with x-axis being frequency and y-axis being estimated power spectrum.
 """
 function plot_psd(psd::PSD; freq_lim=30.0)
-    plot(psd.freq, psd.spectrum)
-    xlims!(0, freq_lim)
+  plot(psd.freq, psd.spectrum)
+  xlims!(0, freq_lim)
 end
 
 
@@ -220,11 +251,11 @@ end
 Given an integer ``n``, finds the least ``m = 2^k`` s.t. ``m \\geq n``. 
 """
 function next_power_of_two(n::Int)
-    p = 1
-    while p < n
-        p <<= 1
-    end
-    return p
+  p = 1
+  while p < n
+    p <<= 1
+  end
+  return p
 end
 
 """
@@ -233,16 +264,16 @@ end
 Zero-pads a numeric vector `v` to a `desired_length`
 """
 function zero_pad(v::Vector{T}, desired_length::Integer) where {T<:AbstractFloat}
-    current_length = length(v)
-    if current_length == desired_length
-        return v
-    end
-    if desired_length < current_length
-        throw(ArgumentError("Cannot zero-pad to a length inferior to the original vector's length"))
-    end
-    padded_vector = zeros(T, desired_length)
-    padded_vector[1:current_length] = v
-    return padded_vector
+  current_length = length(v)
+  if current_length == desired_length
+    return v
+  end
+  if desired_length < current_length
+    throw(ArgumentError("Cannot zero-pad to a length inferior to the original vector's length"))
+  end
+  padded_vector = zeros(T, desired_length)
+  padded_vector[1:current_length] = v
+  return padded_vector
 
 end
 
@@ -253,8 +284,8 @@ end
 Given a `PSD`, returns a `Vector{<:AbstractFloat}` with the powers within the frequency band `[lower, upper]`.
 """
 function freq_band(spec::Union{PSD}, lower::AbstractFloat, upper::AbstractFloat)
-    indexes = findall(x -> x >= lower && x <= upper, spec.freq)
-    spec.spectrum[indexes]
+  indexes = findall(x -> x >= lower && x <= upper, spec.freq)
+  spec.spectrum[indexes]
 end
 
 
@@ -265,9 +296,9 @@ Given a `Spectrogram`, returns a `Vector{<:AbstractFloat}` with the powers withi
 of a specific window (row of the spectrogram).
 """
 function freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat, window::Integer)
-    spectrum = spec.spectrums[window, :]
-    indexes = findall(x -> x >= lower && x <= upper, spec.freq)
-    spectrum[indexes]
+  spectrum = spec.spectrums[window, :]
+  indexes = findall(x -> x >= lower && x <= upper, spec.freq)
+  spectrum[indexes]
 end
 
 """
@@ -277,9 +308,9 @@ Given a `Spectrogram`, returns a `Matrix{<:AbstractFloat}` with the powers withi
 across all time windows.
 """
 function freq_band(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
-    spectrum = spec.spectrums
-    indexes = findall(x -> x >= lower && x <= upper, spec.freq)
-    spectrum[:, indexes]
+  spectrum = spec.spectrums
+  indexes = findall(x -> x >= lower && x <= upper, spec.freq)
+  spectrum[:, indexes]
 end
 
 """
@@ -293,12 +324,12 @@ effectively computes
 ```
 """
 function mean_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
-    band = freq_band(spec, lower, upper)
-    # Sum columns in band and average by number of columns; 
-    # i.e. compute a vector with a mean frequency power per time window
-    frequency_average = mean(band, dims=2) 
-    # Get the mean across time
-    mean(frequency_average)
+  band = freq_band(spec, lower, upper)
+  # Sum columns in band and average by number of columns; 
+  # i.e. compute a vector with a mean frequency power per time window
+  frequency_average = mean(band, dims=2) 
+  # Get the mean across time
+  mean(frequency_average)
 end
 
 """
@@ -307,7 +338,13 @@ end
 Given a `PSD`, returns the mean power in a given frequency band `[lower, upper]`. 
 """
 function mean_band_power(spec::PSD, lower::AbstractFloat, upper::AbstractFloat)
-    band = freq_band(spec, lower, upper)
-    mean(band)
+  band = freq_band(spec, lower, upper)
+  mean(band)
 end
+
+
+
+
+
+
 
