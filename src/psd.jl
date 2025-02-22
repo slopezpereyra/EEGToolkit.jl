@@ -69,6 +69,7 @@ a normalization factor defaulting to `1`.
 `PSD(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer; overlap::Union{<:AbstractFloat,Integer} = 0.5, window_function::Function=hanning, normalization::Real=1)`: Segments the signal `x` into segments of length `seg_length`, with an overlap of `overlap` which defaults to 0.5 (half the segment length). After signal segmentation, the average spectrum of the resulting segments is returned. A `window_function` is applied to all segments prior to their PSD estimation, defaulting to a Hanning window. The final estimation is normalized with a `normalization` factor that defaults to `1`.
 - `PSD(ts::TimeSeries; kargs...)` : Wrapper to apply the first or second constructor to a TimeSeries signal.
 - `PSD(ts::TimeSeries, seg_length::Integer; kargs...)`: Wrapper to apply the third constructor to a TimeSeries signal.
+- `PSD(freq::Vector{<:AbstractFloat},  spectrum::Vector{<:AbstractFloat})`: Direct constructor.
 """
 struct PSD
   freq::Vector{<:AbstractFloat}
@@ -90,7 +91,7 @@ struct PSD
   end
 
 
-  function PSD(segs::Vector{Vector{T}}, fs::Integer; window_function::Function = hanning, normalization::Real=1) where {T<:AbstractFloat}
+  function PSD(segs::Vector{Vector{T}}, fs::Integer; window_function::Function = rect, normalization::Real=1) where {T<:AbstractFloat}
     psds = map(s -> PSD(s, fs; window_function=window_function), segs)
     segment_length = length(segs[1])
     freq = psds[1].freq
@@ -99,14 +100,12 @@ struct PSD
   end
 
   function PSD(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer;
-               overlap::Union{<:AbstractFloat,Integer} = 0.5, window_function::Function=hanning,
+               overlap::Union{<:AbstractFloat,Integer} = 0, window_function::Function=rect,
                normalization::Real=1)
 
     segs = segment(x, seg_length; overlap=overlap, symmetric=true)
     PSD(segs, fs; window_function=window_function, normalization=normalization)
   end
-
-
 
   function PSD(ts::TimeSeries; kargs...)
     PSD(ts.x, ts.fs; kargs...)
@@ -115,10 +114,15 @@ struct PSD
   function PSD(ts::TimeSeries, seg_length::Integer; kargs...)
     PSD(ts.x, ts.fs, seg_length; kargs...)
   end
+
+  function PSD(freq::Vector{<:AbstractFloat},  spectrum::Vector{<:AbstractFloat})
+    new(freq, spectrum)
+  end
 end
 
 
 """
+`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram`
 
 Perform a standardized analysis of an EEG signal. This analysis procedure 
 succesfully replicated results from Washington State University in collaboration
@@ -130,28 +134,48 @@ aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated
 spectra from its epochs.
 
 """
-function standard_eeg_analysis(epochs, fs)
-  spectrums = []
+function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram
 
-  # Drop last segment if it isn't a full epoch.
-  if length(epochs[end]) > length(epochs[1])
-    epochs = epochs[1:length(epochs)-1]
-  end
+  # The function to be applied to each epoch. Observe that 5*fs is the 
+  # sub-epoch length: each epoch's spectrum will be the aggregated spectra 
+  # of its sub-epochs.
+  psd_function = x -> PSD(x, fs, 5*fs; normalization=1, window_function=rect, overlap=0)
+  Spectrogram(signal, 30*fs, psd_function)
 
-  psd = Nothing
-  for epoch in epochs 
-      subepochs = segment(epoch, fs*5; symmetric=true)
-      psd = PSD(subepochs, fs; normalization=1, window_function=rect)
-      push!(spectrums, psd.spectrum)
-  end
-  return psd.freq, spectrums
+end
+
+
+"""
+`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer, epoch_indexes::Vector{<:Integer})`
+
+Perform a standardized analysis of the specified epochs of an EEG signal. 
+This analysis procedure succesfully replicated results from Washington State 
+University in collaboration with the developer's laboratory at UPenn. 
+
+The standardized procedure is as follows: split the signal into 30-sec epochs,
+each of which is split into 5-sec sub-epochs. Each epoch's spectrum is the 
+aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated 
+spectra from its epochs.
+
+"""
+function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer, epoch_indexes::Vector{<:Integer})
+
+  # The function to be applied to each epoch. Observe that 5*fs is the 
+  # sub-epoch length: each epoch's spectrum will be the aggregated spectra 
+  # of its sub-epochs.
+  signal = vcat(segment(signal, fs*30; symmetric=true)[epoch_indexes]...)
+  psd_function = x -> PSD(x, fs, 5*fs; normalization=1, window_function=rect, overlap=0)
+
+  Spectrogram(signal, 30*fs, psd_function)
+
 end
 
 """
 A spectrogram is a matrix ``S^{M \\times F}`` where ``M`` is the number of windows in 
-the windowing of a signal and ``F`` is the length of the spectrum vector in any given window (i.e. the frequency resolution). It is useful to observe spectral changes in time or to compute the 
-spectrum of time-regions of interest (e.g. only NREM periods in a sleep EEG). The information 
-available in direct PSD can be inferred from the spectrogram with ease.
+the windowing of a signal and ``F`` is the length of the spectrum vector in any given window (i.e. the frequency resolution). 
+It is useful to observe spectral changes in time or to compute the 
+spectrum of time-regions of interest (e.g. only NREM periods in a sleep EEG). 
+The information available in direct PSD can be inferred from the spectrogram with ease.
 
 For instance, let ``f_1, f_2, \\ldots, f_k`` be a strictly increasing sequence of
 frequencies. Assume these frequencies correspond to the column indexes
@@ -170,6 +194,7 @@ In this package, mean power in a frequency range is computed with the `mean_band
 - `freq::Vector{<:AbstractFloat}`: Frequency domain 
 - `spectrums::Matrix{<:AbstractFloat}`: Power spectrum. Rows are time and columns are frequency; the value in `spectrums[row, freq]` is the power at time window `row` for frequency `freq`.
 - `segment_length::Integer` : Length of each segment in time.
+- `aggregated_spectra::Vector{<:AbstractFloat}` : Spectral average (mean of rows)
 
 # Constructors
 - `Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}`: Given a sequence of windows ``w_1, \\ldots, w_k`` contained in the `segs` argument, computes the PSD within each window using a custom `psd_function`. 
@@ -181,6 +206,7 @@ struct Spectrogram
   freq::Vector{<:AbstractFloat}
   spectrums::Matrix{<:AbstractFloat}
   segment_length::Integer
+  avg_spectra::Vector{<:AbstractFloat}
 
   function Spectrogram(segs::Vector{Vector{T}}, psd_function::Function; dB = false) where {T<:AbstractFloat}
 
@@ -191,6 +217,7 @@ struct Spectrogram
     psds = map(psd_function, segs)
     freq = psds[1].freq
     spectrums = [psd.spectrum for psd in psds]
+    mean_spectrum = mean(spectrums)
 
     spectrogram_data = zeros(length(spectrums), length(freq))
     for i in 1:length(spectrums)
@@ -201,7 +228,7 @@ struct Spectrogram
       spectrogram_data = pow2db.(spectrogram_data)
     end
 
-    new(1:length(spectrums), freq, spectrogram_data, length(segs[1]))
+    new(1:length(spectrums), freq, spectrogram_data, length(segs[1]), mean_spectrum)
   end
 
   function Spectrogram(signal::Vector{<:AbstractFloat}, window_length::Integer, psd_function::Function; overlap::Union{<:AbstractFloat, Integer}=0, dB=false)
@@ -341,9 +368,15 @@ function mean_band_power(spec::PSD, lower::AbstractFloat, upper::AbstractFloat)
   mean(band)
 end
 
+"""
+`total_band_power(psd::PSD, lower::AbstractFloat, upper::AbstractFloat)`
 
-
-
+Given a PSD, computes the total power in the frequency band `[lower, upper]`.
+"""
+function total_band_power(psd::PSD, lower::AbstractFloat, upper::AbstractFloat)
+  indexes = findall(x -> x >= lower && x <= upper, psd.freq)
+  sum(psd.spectrum[indexes])
+end
 
 
 
