@@ -1,3 +1,6 @@
 /Manifest.toml
 *.edf
 docs/build/
+*.csv
+*.xls
+*.zip
