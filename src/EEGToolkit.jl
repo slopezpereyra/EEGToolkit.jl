@@ -35,6 +35,8 @@ export next_power_of_two
 export zero_pad 
 export freq_band 
 export mean_band_power 
+export total_band_power 
+export analyze_eeg
 
 export nrem
 

@@ -25,11 +25,11 @@ This package has three aims:
 - Transparency
 - Efficiency
 
-*Simplicity* means that a person with little programming background should be
-able to use it, at least with the documentation at hand. *Transparency* means
-that any methodology implemented by the package should be accessible enough so
-as to be reported in a scientific paper.  *Efficiency* means that large EEGs
-(e.g. sleep EEGs) should be processed and analyzed in minutes or less.
+*Simplicity* means that a person with only basic programming skills should be
+able to use it. *Transparency* means that any methodology implemented by the
+package should be accessible enough so as to be reported in a scientific paper.
+*Efficiency* means that large EEGs (e.g. sleep EEGs) should be processed and
+analyzed in seconds.
 
 --- 
 
@@ -40,8 +40,8 @@ as to be reported in a scientific paper.  *Efficiency* means that large EEGs
 > any modified version of this package. 
 >
 > Proprietary software hinders the liberty of its users. In science, it
-> obscures the scientific process and makes replication and
-> collaboration difficult. If you are a scientist, use free software whenever possible.
+> obscures the scientific process, difficulting replication and collaboration.
+> If you are a scientist, use free software whenever possible.
 
 ---
 
@@ -152,6 +152,8 @@ Spectrogram
 plot_spectrogram
 freq_band 
 mean_band_power
+total_band_power
+analyze_eeg
 ```
 
 ## Helpers

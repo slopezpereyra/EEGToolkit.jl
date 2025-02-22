@@ -69,6 +69,7 @@ a normalization factor defaulting to `1`.
 `PSD(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer; overlap::Union{<:AbstractFloat,Integer} = 0.5, window_function::Function=hanning, normalization::Real=1)`: Segments the signal `x` into segments of length `seg_length`, with an overlap of `overlap` which defaults to 0.5 (half the segment length). After signal segmentation, the average spectrum of the resulting segments is returned. A `window_function` is applied to all segments prior to their PSD estimation, defaulting to a Hanning window. The final estimation is normalized with a `normalization` factor that defaults to `1`.
 - `PSD(ts::TimeSeries; kargs...)` : Wrapper to apply the first or second constructor to a TimeSeries signal.
 - `PSD(ts::TimeSeries, seg_length::Integer; kargs...)`: Wrapper to apply the third constructor to a TimeSeries signal.
+- `PSD(freq::Vector{<:AbstractFloat},  spectrum::Vector{<:AbstractFloat})`: Direct constructor.
 """
 struct PSD
   freq::Vector{<:AbstractFloat}
@@ -106,8 +107,6 @@ struct PSD
     PSD(segs, fs; window_function=window_function, normalization=normalization)
   end
 
-
-
   function PSD(ts::TimeSeries; kargs...)
     PSD(ts.x, ts.fs; kargs...)
   end
@@ -123,6 +122,7 @@ end
 
 
 """
+`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram`
 
 Perform a standardized analysis of an EEG signal. This analysis procedure 
 succesfully replicated results from Washington State University in collaboration
@@ -134,7 +134,7 @@ aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated
 spectra from its epochs.
 
 """
-function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)
+function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram
 
   # The function to be applied to each epoch. Observe that 5*fs is the 
   # sub-epoch length: each epoch's spectrum will be the aggregated spectra 
@@ -147,6 +147,7 @@ end
 
 
 """
+`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer, epoch_indexes::Vector{<:Integer})`
 
 Perform a standardized analysis of the specified epochs of an EEG signal. 
 This analysis procedure succesfully replicated results from Washington State 
