@@ -146,7 +146,7 @@ end
 
 
 """
-`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer, epoch_indexes::Vector{<:Integer})`
+`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer, epoch_indexes::Vector{<:Integer})::Spectrogram`
 
 Perform a standardized analysis of the specified epochs of an EEG signal. 
 This analysis procedure succesfully replicated results from Washington State 
@@ -158,7 +158,8 @@ aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated
 spectra from its epochs.
 
 """
-function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer, epoch_indexes::Vector{<:Integer})
+function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer,
+                     epoch_indexes::Vector{<:Integer})::Spectrogram
 
   # The function to be applied to each epoch. Observe that 5*fs is the 
   # sub-epoch length: each epoch's spectrum will be the aggregated spectra 
@@ -353,7 +354,7 @@ function mean_band_power(spec::Spectrogram, lower::AbstractFloat, upper::Abstrac
   band = freq_band(spec, lower, upper)
   # Sum columns in band and average by number of columns; 
   # i.e. compute a vector with a mean frequency power per time window
-  frequency_average = mean(band, dims=2) 
+  frequency_average = mean(band, dims=1) 
   # Get the mean across time
   mean(frequency_average)
 end
