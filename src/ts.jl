@@ -321,12 +321,22 @@ empty, if all sub-epochs of epoch `i` contained artifacts.
 """
 function artifact_reject(signal::TimeSeries, anom_dict::Dict{Int, Vector{Int}}; epoch_length::Integer=30, subepoch_length::Integer=5)::Vector{Vector{<:AbstractFloat}}
 
-  if any(x -> x < 0 || x > num_epochs(signal, epoch_length), keys(anom_dict))
+  N = num_epochs(signal, epoch_length)
+
+  # The signal is symmetrically split, which means last epoch is dropped,
+  # and we must ensure it's not in the dictionary either.
+  if haskey(anom_dict, N + 1)
+      delete!(anom_dict, N + 1)
+  end
+
+  # Safety check
+  if any(x -> x < 0 || x > N, keys(anom_dict))
     msg = "The `anom_dict` argument contains keys greater than the number of epochs in the `signal` or 
       non-positive."
     throw( ArgumentError(msg)  )
   end
 
+  # Actual procedure
   T = typeof(signal.x[1])
 
   epochs = segment(signal, signal.fs * epoch_length; symmetric = true)
