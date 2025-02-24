@@ -15,22 +15,34 @@ struct TimeSeries
   end
 end
 
+"""Given an epoch number, a sampling rate, and an epoch length in seconds, 
+returns all indexes which would correspond to said epoch in a signal."""
 function epoch_to_indexes(n::Integer, fs::Integer, epoch_length::Integer)::Tuple{Integer, Integer}
   s = ((n - 1) * fs * epoch_length) + 1
   e = n * fs * epoch_length
   (s, e)
 end
 
+"""Given two epoch numbers, a sampling rate, and an epoch length in seconds, 
+returns all indexes which would correspond to the closed interval between both 
+epochs in a signal."""
 function epochs_to_indexes(n::Integer, m::Integer, fs::Integer, epoch_length::Integer)::Tuple{Integer, Integer}
   s = ((n - 1) * fs * epoch_length) + 1
   e = m * fs * epoch_length
   (s, e)
 end
 
+
+"""
+Returns the duration in seconds of a time series.
+"""
 function length_in_secs(ts::TimeSeries)
   length(ts.x)/ts.fs
 end
 
+"""
+Returns the duration in minutes of a time series.
+"""
 function length_in_mins(ts::TimeSeries)
   length_in_secs(ts)/60
 end
@@ -40,6 +52,9 @@ function num_epochs(ts::TimeSeries, epoch_length::Int)::Int
   floor(Int, total_duration / epoch_length)
 end
 
+"""
+Returns the duration in hours of a time series.
+"""
 function length_in_hours(ts::TimeSeries)
   length_in_mins(ts)/60
 end
@@ -287,20 +302,19 @@ function plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")::Plots.Plot
 end
 
 """
-`artifact_reject(signal::TimeSeries, anom_matrix::Matrix; epoch_length::Integer=30, subepoch_length::Integer=5)`
+function artifact_reject(signal::TimeSeries, anom_dict::Dict{Int, Vector{Int}}; epoch_length::Integer=30, subepoch_length::Integer=5)::Vector{Vector{<:AbstractFloat}};
 
+This function removes from a signal the sub-epochs which contain artifacts. 
+It requires a `TimeSeries` and a `Dict{Int, Vector{Int}}`, hereby termed 
+`anom_dict` (for anomaly dictionary). 
 
-This  function  requires  `TimeSeries`   and  an  anomaly  matrix  ``A``, 
-and has epoch and subepoch lengths (in seconds) as optional parameters.
-An anomaly matrix ``A  \\in  \\mathbb{N}^{n  \\times  2}``  is  a  matrix which holds
-epoch-subepoch   pairs   that   contain    artifacts    in    a    `TimeSeries`.
-Each row ``(n, m)`` of ``A`` denotes that the ``n``th epoch contained 
-an artifact within sub-epoch ``m``. 
+`anom_dict` is understood to be such that `anom_dict[i] = [n₁, …, nₖ]`
+means the `i`th epoch has artifacts at sub-epochs `n₁, ..., nₖ`.
 
-The function   removes   from   the   signal   the   epoch-subepoch    pairs    containing
-artifacts. In particular, this function returns a 
-`Vector{Vector{T}}` with `T<:AbstractFloat`. Thus, if 
-`result`   holds   the   return   value   of    this    function,    `result[i]`
+The return value is a segmented signal (`Vector{Vector<:AbstractFloat}}`), each 
+of whose segments corresponds to an epoch with its artifcat-contaminated 
+sub-epochs removed. In other words, if the `result`   holds   the   return   
+value   of    this    function,    `result[i]`
 contains   what   is   left   from    the    `i`th    epoch    after    removing
 its   contaminated   sub-epochs.   It   is   possible   that   `result[i]`    is
 empty, if all sub-epochs of epoch `i` contained artifacts.
@@ -318,10 +332,15 @@ function artifact_reject(signal::TimeSeries, anom_dict::Dict{Int, Vector{Int}}; 
   epochs = segment(signal, signal.fs * epoch_length; symmetric = true)
   windows = map(e -> segment(e, signal.fs * subepoch_length; symmetric=true), epochs)
 
+  # Iterate through each ( epoch , contaminated sub-epochs ) pair
   for (epoch, subepochs) in anom_dict
-    deleteat!(windows[epoch], sort(subepochs))
+    # Sort the indexes of contaminated sub-epochs to be used in `deleteat!`.
+    sorted_contaminated_epochs = sort(subepochs)
+    # Delete from the epoch the contaminated sub-epochs.
+    deleteat!(windows[epoch], sorted_contaminated_epochs)
   end
 
+  # Collect each epoch after artifact removal, return vector of clean epochs.
   [Vector{T}(vcat(window...)) for window in windows]
 end
 
