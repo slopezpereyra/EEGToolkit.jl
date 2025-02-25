@@ -75,7 +75,11 @@ struct PSD
   freq::Vector{<:AbstractFloat}
   spectrum::Vector{<:AbstractFloat}
 
-  function PSD(x::Vector{<:AbstractFloat}, fs::Integer; window_function::Function = hanning, pad::Integer=0, normalization::Real=1)
+  function PSD(x::Vector{<:AbstractFloat}, fs::Integer; 
+               window_function::Function = hanning,
+               pad::Integer=0, 
+               normalization::Real=1)
+
     # Pad if necessary
     x = (pad > 0) ? zero_pad(x, pad) : x
 
@@ -91,7 +95,10 @@ struct PSD
   end
 
 
-  function PSD(segs::Vector{Vector{T}}, fs::Integer; window_function::Function = rect, normalization::Real=1) where {T<:AbstractFloat}
+  function PSD(segs::Vector{Vector{T}}, fs::Integer; 
+               window_function::Function = rect, 
+               normalization::Real=1) where {T<:AbstractFloat}
+
     psds = map(s -> PSD(s, fs; window_function=window_function), segs)
     segment_length = length(segs[1])
     freq = psds[1].freq
@@ -100,7 +107,8 @@ struct PSD
   end
 
   function PSD(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer;
-               overlap::Union{<:AbstractFloat,Integer} = 0, window_function::Function=rect,
+               overlap::Union{<:AbstractFloat,Integer} = 0, 
+               window_function::Function=rect,
                normalization::Real=1)
 
     segs = segment(x, seg_length; overlap=overlap, symmetric=true)
@@ -218,7 +226,7 @@ struct Spectrogram
     psds = map(psd_function, segs)
     freq = psds[1].freq
     spectrums = [psd.spectrum for psd in psds]
-    mean_spectrum = mean(spectrums)
+    mean_spectrum = vec( mean(spectrums, dims=1) )
 
     spectrogram_data = zeros(length(spectrums), length(freq))
     for i in 1:length(spectrums)
