@@ -226,7 +226,7 @@ struct Spectrogram
     psds = map(psd_function, segs)
     freq = psds[1].freq
     spectrums = [psd.spectrum for psd in psds]
-    mean_spectrum = vec( mean(spectrums, dims=1) )
+    mean_spectrum = mean(spectrums)
 
     spectrogram_data = zeros(length(spectrums), length(freq))
     for i in 1:length(spectrums)
