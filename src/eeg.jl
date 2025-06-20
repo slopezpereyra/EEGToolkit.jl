@@ -16,17 +16,26 @@ struct EEG
   _signals::Dict{String, TimeSeries}
 
   function EEG(file::String)
+    annotation_flag = false
     if !(endswith(file, ".edf"))
-      throw(ArgumentError("The EEG construct must take as input a .edf file, but other filetype was provided."))
+      throw(ArgumentError("The EEG constructor must take as input a .edf file, but other filetype was provided."))
     end
 
     eeg = EDF.read(file)
     S = Dict()
 
     for signal in eeg.signals
+      if signal isa EDF.AnnotationsSignal 
+        annotation_flag = true
+        continue
+      end
       x = EDF.decode(signal)
       fs = Int(signal.header.samples_per_record / eeg.header.seconds_per_record)
       S[signal.header.label] = TimeSeries(x, fs)
+    end
+
+    if annotation_flag 
+      @warn("The EDF file included annotation signals, which were ignored.")
     end
 
     new(S)
