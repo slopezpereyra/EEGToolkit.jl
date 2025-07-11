@@ -45,8 +45,9 @@ export nrem
 export sigma_index
 export relative_spindle_power
 
-export detect_anomalies
-export plot_anomaly
+export detect_artifacts
+export plot_artifact
+export plot_artifacts_in_epochs
 
 include("ts.jl")
 include("eeg.jl")

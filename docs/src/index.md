@@ -156,6 +156,44 @@ total_band_power
 analyze_eeg
 ```
 
+## Artifact detection 
+
+This package provides an interface of the CAPA statistical method ([Fisch,
+Eckley & Fearnhead,
+2021](https://onlinelibrary.wiley.com/doi/full/10.1002/sam.11586)) via the
+`RCall` package. CAPA is an automated anomaly detection algorithm which performs
+in linear time and is specifically designed for time series analysis. The
+adaptation provided in this package detects epidemic changes in the mean of 
+each segment of the EEG, where the segment length is a parameter. The algorithm
+is relatively fast, considering the high complexity of EEG recordings.
+
+
+> For instance, on a 15.5 million samples EEG
+record with 8 channels (all artifact-detected), with a segment length of `30 *
+5` seconds, the algorithm took ≈8.6 minutes on a computer with an I3 processor
+and 8GB of RAM. That's 8.6/8 = 1.075 minutes per channel, i.e. practically a
+minute per each 15.5 million-sized vector, on a mediocre computer.
+
+
+```@docs
+detect_artifacts
+plot_artifact
+plot_artifacts_in_epochs
+```
+
+The plot below shows the result of executing the following code: 
+
+```julia 
+file = "myedf.edf" 
+eeg = EEG(file)
+signal = get_channel(eeg, "EEG6")
+anoms = detect_artifacts(signal, 60*5)  # epoch length = 5 minutes
+plot_artifacts_in_epochs(30, 60, anoms, signal)
+```
+
+
+![](assets/Anoms.png)
+
 ## Helpers
 
 ```@docs

@@ -4,27 +4,33 @@ authors = ["Santiago Lopez Pereyra"]
 version = "0.2.3"
 
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 EDF = "ccffbfc1-f56e-50fb-a33b-53d1781b2825"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 PlotThemes = "ccf2f8ad-2431-5c83-bf29-c5338b663b6a"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
+RCall = "6f49c342-dc21-5d91-9882-a32aef131414"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
+CSV = "0.10.15"
 Combinatorics = "1.0.2"
 DSP = "0.7.9"
+DataFrames = "1.7.0"
+Dates = "1.6.7"
 EDF = "0.7"
 FFTW = "1.8"
 PlotThemes = "3"
 Plots = "1.40"
 Polynomials = "4"
+RCall = "0.14.8"
 Statistics = "1.6.7"
 julia = "1.10.4"
-Dates = "1.6.7"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

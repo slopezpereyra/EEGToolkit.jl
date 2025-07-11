@@ -85,6 +85,9 @@ function detect_artifacts(signal::TimeSeries, epoch_length::Int)
     return Dict(pairs(eachcol(result)))
 end
 
+"""
+Plot's the `i`th artifact given `anoms`, a `signal` and some optional padding.
+"""
 function plot_artifact(i::Int, anoms::Dict, signal::TimeSeries; pad::Int=1)
     s = anoms[:start][i] 
     e = anoms[:end][i] 
@@ -121,4 +124,52 @@ function plot_artifact(i::Int, anoms::Dict, signal::TimeSeries; pad::Int=1)
     return p
 end
 
+"""
+Incomplete but similar to previous method.
+"""
+function plot_artifacts_in_epochs(from_epoch::Int, to_epoch::Int, anoms::Dict, signal::TimeSeries)
+    s, e = epochs_to_indexes(from_epoch, to_epoch, signal.fs, 30)
+    indices = findall(x -> x >= s && x <= e, anoms[:start])
+
+    if isempty(indices)
+        @warn "No artifacts found in epoch range"
+        return nothing
+    end
+
+    plot_start = s
+    plot_end = e
+
+    t = (plot_start:plot_end) ./ signal.fs
+    sig = signal.x[plot_start:plot_end]
+
+    # Plot base signal without legend
+    p = plot(
+        t, sig,
+        label="",  # no label
+        color=:black,
+        xlabel="Time (s)",
+        ylabel="Amplitude",
+        title="Artifacts in Epochs ($from_epoch, $to_epoch)",
+        legend=false,
+    )
+
+    # Overlay all artifact regions
+    for i in indices
+        s = anoms[:start][i]
+        e = anoms[:end][i]
+
+        t_anom = (s:e) ./ signal.fs
+        sig_anom = signal.x[s:e]
+        plot!(p, t_anom, sig_anom, lw=2, color=:red)
+
+        # Place annotation at the middle of the artifact
+        t_mid = mean(t_anom)
+        y_mid = maximum(sig_anom)
+
+        txt = "Anom $i\nΔμ=$(round(anoms[:mean_change][i], digits=1))\nT=$(round(anoms[:test_statistic][i], digits=1))"
+        annotate!(p, t_mid, y_mid, text(txt, :left, 8, :red))
+    end
+
+    return p
+end
 
