@@ -6,6 +6,8 @@ using Plots
 using FFTW
 using DSP
 using Statistics
+using DataFrames
+using RCall
 
 export TimeSeries
 export segment
@@ -43,10 +45,14 @@ export nrem
 export sigma_index
 export relative_spindle_power
 
+export detect_anomalies
+export plot_anomaly
+
 include("ts.jl")
 include("eeg.jl")
 include("psd.jl")
 include("spindles.jl")
 include("nrem.jl")
+include("artifacts.jl")
 
 end
