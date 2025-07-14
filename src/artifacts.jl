@@ -3,7 +3,6 @@ using DataFrames
 using Plots
 using RCall
 
-# Load required R libraries and define all functions
 R"""
 library(dplyr)
 library(anomaly)
@@ -44,6 +43,13 @@ detect_artifacts <- function(signal, fs, epoch_length) {
 }
 """
 
+struct Artifact
+  loc::Tuple{Int, Int}
+  mean_change::Float64 
+  test_statistic::Float64
+  epoch_range::Tuple{Int, Int}
+end
+
 
 """
 detect_artifacts(signal::TimeSeries, epoch_length::Int)::DataFrame
@@ -73,90 +79,95 @@ Example:
 ```julia
 eeg = EEG(some_eeg_file.edf)
 signal = get_channel(eeg, "EEG6")
-df = detect_artifacts(signal, 60*5)  # epoch length = 5 minutes
+anoms = detect_artifacts(signal, 60*5)  # epoch length = 5 minutes
 ```
 """
-function detect_artifacts(signal::TimeSeries, epoch_length::Int)
+function detect_artifacts(signal::TimeSeries, seg_length::Int)::Vector{Artifact}
     x = signal.x 
     fs = signal.fs
-    @rput x fs epoch_length
-    R"result <- detect_artifacts(x, fs, epoch_length)"
+    @rput x fs seg_length
+    R"result <- detect_artifacts(x, fs, seg_length)"
     @rget result
-    return Dict(pairs(eachcol(result)))
+    
+    start_indices = round.(Int, result[!, :start])
+    end_indices = round.(Int, result[!, :end])
+    mean_changes = result[!, Symbol("mean_change")]
+    test_statistics = result[!, Symbol("test_statistic")]
+
+    artifacts = Artifact[]
+    for (start, stop, meanchg, teststat) in zip(start_indices, end_indices, mean_changes, test_statistics)
+        epoch_s = index_to_epoch(start, fs, 30)
+        epoch_e = index_to_epoch(stop, fs, 30)
+        push!(artifacts, Artifact((start, stop), meanchg, teststat, (epoch_s, epoch_e)))
+    end
+
+    return artifacts
 end
 
-"""
-Plot's the `i`th artifact given `anoms`, a `signal` and some optional padding.
-"""
-function plot_artifact(i::Int, anoms::Dict, signal::TimeSeries; pad::Int=1)
-    s = anoms[:start][i] 
-    e = anoms[:end][i] 
-
-    samples_per_epoch = 30 * signal.fs
-    epoch_number_s = cld(s, samples_per_epoch) - pad
-    epoch_number_e = cld(e, samples_per_epoch) + pad
-    range = epochs_to_indexes(epoch_number_s, epoch_number_e, signal.fs, 30)
-    
-    plot_start = range[1]
-    plot_end = range[2]
-
-    t = (plot_start:plot_end) ./ signal.fs
-    sig = signal.x[plot_start:plot_end]
-
-    title_str = "Artifact $i (Epoch ($epoch_number_s, $epoch_number_e )"
-    subtitle_str = "Δμ = $(round(anoms[:mean_change][i], digits=2)), stat = $(round(anoms[:test_statistic][i], digits=2))"
-    
-    p = plot(
-      t, sig,
-      label="Signal",
-      color=:black,
-      xlabel="Time (s)",
-      ylabel="Amplitude",
-      title=title_str * "\n" * subtitle_str
-)
-
-    # Overlay artifact region
-    t_anom = (s:e) ./ signal.fs
-    sig_anom = signal.x[s:e]
-
-    plot!(t_anom, sig_anom, color=:red, label="Artifact")
-
-    return p
+function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int)::Nothing
+  signal = get_channel(eeg, channel_name)
+  eeg._artifacts[channel_name] = detect_artifacts(signal, seg_length)
+  return
 end
+
+
+function get_epochs_with_artifacts(artifacts::Vector{Artifact})
+    epochs = Int[]
+    for a in artifacts
+        push!(epochs, a.epoch_range[1]:a.epoch_range[2]...)  
+    end
+    return sort(unique(epochs))
+end
+
+
+function get_epochs_with_artifacts(eeg::EEG, channel_name::String)
+    artifacts = get_artifacts(eeg, channel_name)
+    epochs = Int[]
+    for a in artifacts
+        push!(epochs, a.epoch_range[1]:a.epoch_range[2]...)  
+    end
+    return sort(unique(epochs))
+end
+
+
 
 """
 Incomplete but similar to previous method.
 """
-function plot_artifacts_in_epochs(from_epoch::Int, to_epoch::Int, anoms::Dict, signal::TimeSeries)
-    s, e = epochs_to_indexes(from_epoch, to_epoch, signal.fs, 30)
-    indices = findall(x -> x >= s && x <= e, anoms[:start])
+function plot_artifacts_in_epochs(eeg::EEG, channel_name::String, from::Integer, to::Integer; 
+                                  annotate::Bool=false)
 
-    if isempty(indices)
+    # Vector of artifacts in the desired region
+    artifacts = filter(
+      x -> x.epoch_range[1] >= from && x.epoch_range[2] <= to, 
+      get_artifacts(eeg, channel_name)
+    )
+    if isempty(artifacts)
         @warn "No artifacts found in epoch range"
         return nothing
     end
+    
+    signal = get_channel(eeg, channel_name)
+    s, e = epochs_to_indexes(from, to, signal.fs, 30)
 
-    plot_start = s
-    plot_end = e
+    t = (s:e) ./ signal.fs
+    sig = signal.x[s:e]
 
-    t = (plot_start:plot_end) ./ signal.fs
-    sig = signal.x[plot_start:plot_end]
-
-    # Plot base signal without legend
+    # Plot base signal without legend and without artifacts
     p = plot(
         t, sig,
         label="",  # no label
         color=:black,
         xlabel="Time (s)",
         ylabel="Amplitude",
-        title="Artifacts in Epochs ($from_epoch, $to_epoch)",
+        title="Artifacts in Epochs ($from, $to)",
         legend=false,
     )
 
     # Overlay all artifact regions
-    for i in indices
-        s = anoms[:start][i]
-        e = anoms[:end][i]
+    for art in artifacts
+        s = art.loc[1]
+        e = art.loc[2]
 
         t_anom = (s:e) ./ signal.fs
         sig_anom = signal.x[s:e]
@@ -165,11 +176,15 @@ function plot_artifacts_in_epochs(from_epoch::Int, to_epoch::Int, anoms::Dict, s
         # Place annotation at the middle of the artifact
         t_mid = mean(t_anom)
         y_mid = maximum(sig_anom)
-
-        txt = "Anom $i\nΔμ=$(round(anoms[:mean_change][i], digits=1))\nT=$(round(anoms[:test_statistic][i], digits=1))"
-        annotate!(p, t_mid, y_mid, text(txt, :left, 8, :red))
+        
+        if annotate
+          txt = "Anom \nΔμ=$(round(art.mean_change, digits=1))\nT=$(round(art.test_statistic, digits=1))"
+          annotate!(p, t_mid, y_mid, text(txt, :left, 8, :red))
+        end
     end
 
     return p
 end
+
+plot_artifacts_in_epochs(eeg, "EEG6", 200, 210)
 

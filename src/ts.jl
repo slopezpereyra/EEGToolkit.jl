@@ -15,6 +15,11 @@ struct TimeSeries
   end
 end
 
+function index_to_epoch(i::Integer, fs::Integer, epoch_length::Integer)::Integer 
+    samples_per_epoch = epoch_length * fs
+    cld(i, samples_per_epoch) 
+end
+
 """Given an epoch number, a sampling rate, and an epoch length in seconds, 
 returns all indexes which would correspond to said epoch in a signal."""
 function epoch_to_indexes(n::Integer, fs::Integer, epoch_length::Integer)::Tuple{Integer, Integer}

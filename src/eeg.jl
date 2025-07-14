@@ -1,3 +1,5 @@
+const ArtifactData = Union{Vector{Artifact}, Nothing}
+
 """
 A struct for the EEG data type. An EEG is simply conceived as a collection of labeled time series.
 
@@ -14,6 +16,7 @@ eeg_data = EEG("path/to/edf_data/data.edf")
 """
 struct EEG
   _signals::Dict{String, TimeSeries}
+  _artifacts::Dict{String, ArtifactData}
 
   function EEG(file::String)
     annotation_flag = false
@@ -23,6 +26,7 @@ struct EEG
 
     eeg = EDF.read(file)
     S = Dict()
+    A = Dict()
 
     for signal in eeg.signals
       if signal isa EDF.AnnotationsSignal 
@@ -32,14 +36,25 @@ struct EEG
       x = EDF.decode(signal)
       fs = Int(signal.header.samples_per_record / eeg.header.seconds_per_record)
       S[signal.header.label] = TimeSeries(x, fs)
+      A[signal.header.label] = nothing
     end
 
     if annotation_flag 
       @warn("The EDF file included annotation signals, which were ignored.")
     end
 
-    new(S)
+    new(S, A)
   end
+end
+
+
+"""
+get_artifacts(eeg::EEG)::Dict{String, ArtifactData}
+
+Returns artifact data for each channel in the `eeg`.
+"""
+function get_artifacts(eeg::EEG)::Dict{String, ArtifactData}
+  return(eeg._artifacts)
 end
 
 """
@@ -52,8 +67,20 @@ function get_channels(eeg::EEG)::Dict{String, TimeSeries}
 end
 
 
+
+
 """
-get_channel(eeg::EEG)::TimeSeries
+get_artifacts(eeg::EEG, channel_name::String)::ArtifactData
+
+Returns the artifacts of the channel named `channel_name` from the `eeg`.
+
+"""
+function get_artifacts(eeg::EEG, channel_name::String)::ArtifactData
+  eeg._artifacts[channel_name]
+end
+
+"""
+get_channel(eeg::EEG, channel_name::String)::TimeSeries
 
 Returns the channel named `channel_name` from the `eeg`.
 

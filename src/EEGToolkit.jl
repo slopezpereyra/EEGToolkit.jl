@@ -7,7 +7,10 @@ using FFTW
 using DSP
 using Statistics
 using DataFrames
-using RCall
+using RCall 
+
+export Artifact 
+export ArtifactData
 
 export TimeSeries
 export segment
@@ -49,11 +52,11 @@ export detect_artifacts
 export plot_artifact
 export plot_artifacts_in_epochs
 
+include("artifacts.jl")
 include("ts.jl")
 include("eeg.jl")
 include("psd.jl")
 include("spindles.jl")
 include("nrem.jl")
-include("artifacts.jl")
 
 end
