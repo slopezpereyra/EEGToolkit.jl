@@ -7,7 +7,15 @@ using FFTW
 using DSP
 using Statistics
 using DataFrames
-using RCall 
+using Requires 
+
+function __init__()
+    @require RCall="6f49c342-dc21-5d91-9882-a32aef131414" begin
+        include("RInterface.jl")
+        const EEGToolkitR = EEGToolkit.EEGToolkitR
+        export EEGToolkitR
+    end
+end
 
 export resample 
 

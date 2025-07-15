@@ -180,9 +180,15 @@ in Fisch et. al but matched human supervision on 78Hz sleep EEGs at the
 developer's laboratory. 
 """
 function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int; penalty::Integer = 24)::Nothing
-  signal = get_channel(eeg, channel_name)
-  eeg._artifacts[channel_name] = detect_artifacts(signal, seg_length; penalty)
-  return
+    if isdefined(EEGToolkit, :EEGToolkitR) &&
+       isdefined(EEGToolkit.EEGToolkitR, :detect_artifacts)
+
+        signal = get_channel(eeg, channel_name)  
+        eeg._artifacts[channel_name] = EEGToolkit.EEGToolkitR.detect_artifacts(signal, seg_length; penalty)
+        return
+    else
+        @warn "RCall functionality is not available and artifact detection depends on it. Please install RCall in your current environment."
+    end
 end
 
 
