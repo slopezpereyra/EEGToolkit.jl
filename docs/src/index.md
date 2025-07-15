@@ -169,10 +169,10 @@ is relatively fast, considering the high complexity of EEG recordings.
 
 
 > For instance, on a 15.5 million samples EEG
-record with 8 channels (all artifact-detected), with a segment length of `30 *
-5` seconds, the algorithm took ≈8.6 minutes on a computer with an I3 processor
-and 8GB of RAM. That's 8.6/8 = 1.075 minutes per channel, i.e. practically a
-minute per each 15.5 million-sized vector, on a mediocre computer.
+> record with 8 channels (all artifact-detected), with a segment length of `30 *
+> 5` seconds, the algorithm took ≈8.6 minutes on a computer with an I3 processor
+> and 8GB of RAM. That's 8.6/8 = 1.075 minutes per channel, i.e. practically a
+> minute per each 15.5 million-sized vector, on a mediocre computer.
 
 
 ```@docs
@@ -180,18 +180,7 @@ detect_artifacts
 plot_artifacts_in_epochs
 ```
 
-The plot below shows the result of executing the following code: 
 
-```julia 
-file = "myedf.edf" 
-eeg = EEG(file)
-signal = get_channel(eeg, "EEG6")
-anoms = detect_artifacts(signal, 60*5)  # epoch length = 5 minutes
-plot_artifacts_in_epochs(30, 60, anoms, signal)
-```
-
-
-![](assets/Anoms.png)
 
 ## Helpers
 
@@ -201,6 +190,34 @@ zero_pad
 ```
 
 ## Examples
+
+
+#### Artifact detection 
+
+Consider the REPL commands below, which read an EEG from an EDF file, perform
+artifact detection on each 5min segment of the EEG channel `EEG6`, and plots the
+artifacts from epochs 30 to 60 with annotations.
+
+```julia 
+julia> file = "SWAIVF004.edf" 
+"SWAIVF004.edf"
+julia> eeg = EEG(file)
+julia> detect_artifacts(eeg, "EEG6", 60*5)  # epoch length = 5 minutes
+julia> get_artifacts(eeg) # Just to show what changes after running `detect artifacts`  on channel EEG6.
+Dict{String, Union{Nothing, Vector{Artifact}}} with 11 entries:
+  "Light"    => nothing
+  "Sound"    => nothing
+  "HR"       => nothing
+  "PAT"      => nothing
+  "Head Pos" => nothing
+  "EEG6"     => Artifact[Artifact((1, 152), 33.1202, 5034.28, 1, 1), Artifact((173, 283), 9.70824, 1077.61, 1, 1), Artifact((23575, 23610), 32.582, 1172.95, 11, 1), Artifact((24197, …
+  "EEG5"     => nothing
+  ⋮          => ⋮
+
+julia> plot_artifacts_in_epochs(eeg, "EEG6", 30, 60; annotate=true)
+```
+
+![](assets/Anoms.png)
 
 #### NREM delta power
 
