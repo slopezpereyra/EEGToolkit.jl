@@ -1,6 +1,5 @@
 # src/RInterface.jl
 module EEGToolkitR
-
 using RCall
 
 
@@ -58,10 +57,8 @@ The β `penalty` defaults to `24`, which is much higher than the value recommend
 in Fisch et. al but matched human supervision on 78Hz sleep EEGs at the 
 developer's laboratory. 
 """
-function detect_artifacts(signal::TimeSeries, seg_length::Integer;
-                          penalty::Integer = 24)::Vector{Artifact}
-    x = signal.x 
-    fs = signal.fs
+function anomaly(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer;
+                          penalty::Integer = 24)
     @rput x fs seg_length penalty
     R"result <- detect_artifacts(x, fs, seg_length)"
     @rget result
@@ -71,16 +68,11 @@ function detect_artifacts(signal::TimeSeries, seg_length::Integer;
     mean_changes = result[!, Symbol("mean_change")]
     test_statistics = result[!, Symbol("test_statistic")]
 
-    artifacts = Artifact[]
-    for (start, stop, meanchg, teststat) in zip(start_indices, end_indices, mean_changes, test_statistics)
-        epoch = index_to_epoch(start, fs, 30)
-        offset = start - (epoch - 1) * (30 * fs)
-        subepoch = cld(offset, 5 * fs)
-
-        push!(artifacts, Artifact((start, stop), meanchg, teststat, epoch, subepoch))
-    end
-
-    return artifacts
+    # Horrible, but necessary to keep isolation between modules. 
+    # These four vectors will be used in `detect_artifacts` (eeg.jl)
+    # to create artifact objects, but since these operations depend on 
+    # the EEGToolkit module they cannot be performed here.
+    return start_indices, end_indices, mean_changes, test_statistics
 end
 
 
