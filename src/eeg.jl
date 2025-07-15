@@ -1,4 +1,3 @@
-const ArtifactData = Union{Vector{Artifact}, Nothing}
 
 """
 A struct for the EEG data type. An EEG is simply conceived as a collection of labeled time series.
@@ -162,3 +161,60 @@ function plot_eeg(eeg::EEG, s::Integer, e::Integer;
   end
   return(p)
 end
+
+
+"""
+function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int)::Nothing
+
+Performs artifact detection in the `eeg` channel named `channel_name`. 
+Stores resulting vector of `Artifact` objects in the `_artifacts` dictionary of the `eeg`
+with key `channel_name`. 
+
+Artifact detection is performed on each segment of the signal segmented with
+`seg_length`. On each segment, the CAPA algorithm (Fisch et. al 2022) is used 
+to detect epidemic distributional changes in the mean value of the segment. 
+The `penalty` is an integer value β such that β ln(n) (with `n` the segment's length) 
+is the penalty used by the CAPA algorithm to penalize the introduction of artifacts.
+The β `penalty` defaults to `24`, which is much higher than the value recommended 
+in Fisch et. al but matched human supervision on 78Hz sleep EEGs at the 
+developer's laboratory. 
+"""
+function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int; penalty::Integer = 24)::Nothing
+  signal = get_channel(eeg, channel_name)
+  eeg._artifacts[channel_name] = detect_artifacts(signal, seg_length; penalty)
+  return
+end
+
+
+"""
+function get_epochs_with_artifacts(eeg::EEG, channel_name::String)
+
+Given an `eeg` and a `channel` that's been artifact detected, returns a vector of all 30-sec epochs which contain an artifact in the channel.
+"""
+function get_epochs_with_artifacts(eeg::EEG, channel_name::String)
+    artifacts = get_artifacts(eeg, channel_name)
+    epochs = Int[]
+    for a in artifacts
+        push!(epochs, a.epoch)  
+    end
+    return sort(unique(epochs))
+end
+
+
+"""
+function plot_artifacts_in_epochs(eeg::EEG, channel_name::String,
+
+Given an `eeg` and an artifact-detected `channel_name`, plots the existing
+artifacts in the channel from epoch `from` to epoch `to`. If `annotate` is set
+to true, artifacts are annotated with their mean change and test statistic.
+"""
+function plot_artifacts_in_epochs(eeg::EEG, channel_name::String,
+                                  from::Integer, to::Integer; 
+                                  annotate::Bool=false)
+
+    signal = get_channel(eeg, channel_name)
+    artifacts = get_artifacts(eeg, channel_name)
+    plot_artifacts_in_epochs(signal, artifacts, from, to; annotate)
+end
+
+
