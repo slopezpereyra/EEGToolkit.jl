@@ -15,7 +15,7 @@ artifact_detection <- function(signal, fs, epoch_length_in_secs){
     n_epochs <- floor(length(signal) / epoch_length)
     epochs <- split(signal[1:(n_epochs * epoch_length)],
                     rep(1:n_epochs, each = epoch_length))
-    f <- function(x) { anomaly::capa(scale(x), type="mean", beta=24*log(length(x))) }
+    f <- function(x) { anomaly::capa(scale(x), type="mean", beta=penalty*log(length(x))) }
     analyses <- purrr::map(epochs, f)
     return(analyses)
 }
@@ -43,49 +43,51 @@ detect_artifacts <- function(signal, fs, epoch_length) {
 }
 """
 
+
+"""
+    Artifact
+
+A data structure representing a detected artifact in a time series signal.
+
+# Fields
+
+- `loc::Tuple{Int, Int}`: A tuple indicating the start and end sample indices of the artifact within the signal.
+- `mean_change::Float64`: A numeric value representing the mean change in signal amplitude during the artifact segment. This quantifies the severity or abruptness of the artifact.
+- `test_statistic::Float64`: A test statistic used to determine whether the segment should be considered an artifact.
+- `epoch::Integer`: The 30-sec epoch in which the artifact begins.
+- `subepoch::Integer`: The 5-sec sub-epoch (within the 30-sec epoch) where the artifact begins.
+
+# Usage
+
+Artifacts are typically detected using automated or manual procedures and stored in a vector of `Artifact` objects. They can be used for visualization, rejection, or correction of contaminated segments in preprocessing pipelines.
+"""
 struct Artifact
   loc::Tuple{Int, Int}
   mean_change::Float64 
   test_statistic::Float64
-  epoch_range::Tuple{Int, Int}
+  epoch::Integer
+  subepoch::Integer
 end
 
-
 """
-detect_artifacts(signal::TimeSeries, epoch_length::Int)::DataFrame
+detect_artifacts(signal::TimeSeries, seg_length::Integer; penalty::Integer = 24)::Vector{Artifact}
 
-Detects collective artifacts in a time series using the CAPA algorithm from 
-the R `artifact` package. The signal is divided into non-overlapping epochs 
-of `epoch_length` seconds, each of which is independently analyzed for 
-mean-shift artifacts. The results are combined into a single `DataFrame` 
-containing the global start and end sample indices of each artifact, 
-the mean change, the test statistic, and the epoch in which the artifact occurred.
+Performs artifact detection in the `signal`. Returns a vector of `Artifact` objects.
 
-The `signal` must be a `TimeSeries` object with fields `x` (a vector of values) 
-and `fs` (the sampling frequency in Hz).
-
-Only artifacts with `test.statistic > 1000` are retained. Start and end indices 
-are rounded and cast to `Int` for consistency.
-
-Returns a DataFrame with the following columns:
-- `start::Int`: Starting sample index of the artifact
-- `end::Int`: Ending sample index of the artifact
-- `mean.change::Float64`: Magnitude of the mean shift
-- `test.statistic::Float64`: CAPA test statistic
-- `epoch::Int`: Epoch number in which the artifact was found
-
-Example:
-
-```julia
-eeg = EEG(some_eeg_file.edf)
-signal = get_channel(eeg, "EEG6")
-anoms = detect_artifacts(signal, 60*5)  # epoch length = 5 minutes
-```
+Artifact detection is performed on each segment of the signal segmented with
+`seg_length`. On each segment, the CAPA algorithm (Fisch et. al 2022) is used 
+to detect epidemic distributional changes in the mean value of the segment. 
+The `penalty` is an integer value β such that β ln(n) (with `n` the segment's length) 
+is the penalty used by the CAPA algorithm to penalize the introduction of artifacts.
+The β `penalty` defaults to `24`, which is much higher than the value recommended 
+in Fisch et. al but matched human supervision on 78Hz sleep EEGs at the 
+developer's laboratory. 
 """
-function detect_artifacts(signal::TimeSeries, seg_length::Int)::Vector{Artifact}
+function detect_artifacts(signal::TimeSeries, seg_length::Integer;
+                          penalty::Integer = 24)::Vector{Artifact}
     x = signal.x 
     fs = signal.fs
-    @rput x fs seg_length
+    @rput x fs seg_length penalty
     R"result <- detect_artifacts(x, fs, seg_length)"
     @rget result
     
@@ -96,58 +98,90 @@ function detect_artifacts(signal::TimeSeries, seg_length::Int)::Vector{Artifact}
 
     artifacts = Artifact[]
     for (start, stop, meanchg, teststat) in zip(start_indices, end_indices, mean_changes, test_statistics)
-        epoch_s = index_to_epoch(start, fs, 30)
-        epoch_e = index_to_epoch(stop, fs, 30)
-        push!(artifacts, Artifact((start, stop), meanchg, teststat, (epoch_s, epoch_e)))
+        epoch = index_to_epoch(start, fs, 30)
+        offset = start - (epoch - 1) * (30 * fs)
+        subepoch = cld(offset, 5 * fs)
+
+        push!(artifacts, Artifact((start, stop), meanchg, teststat, epoch, subepoch))
     end
 
     return artifacts
 end
 
+"""
 function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int)::Nothing
+
+Performs artifact detection in the `eeg` channel named `channel_name`. 
+Stores resulting vector of `Artifact` objects in the `_artifacts` dictionary of the `eeg`
+with key `channel_name`. 
+
+Artifact detection is performed on each segment of the signal segmented with
+`seg_length`. On each segment, the CAPA algorithm (Fisch et. al 2022) is used 
+to detect epidemic distributional changes in the mean value of the segment. 
+The `penalty` is an integer value β such that β ln(n) (with `n` the segment's length) 
+is the penalty used by the CAPA algorithm to penalize the introduction of artifacts.
+The β `penalty` defaults to `24`, which is much higher than the value recommended 
+in Fisch et. al but matched human supervision on 78Hz sleep EEGs at the 
+developer's laboratory. 
+"""
+function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int; penalty::Integer = 24)::Nothing
   signal = get_channel(eeg, channel_name)
-  eeg._artifacts[channel_name] = detect_artifacts(signal, seg_length)
+  eeg._artifacts[channel_name] = detect_artifacts(signal, seg_length; penalty)
   return
 end
 
+"""
+function get_epochs_with_artifacts(artifacts::Vector{Artifact})
 
+Given a vector of artifacts, returns a vector of all 30-sec epochs which 
+contain an artifact.
+"""
 function get_epochs_with_artifacts(artifacts::Vector{Artifact})
     epochs = Int[]
     for a in artifacts
-        push!(epochs, a.epoch_range[1]:a.epoch_range[2]...)  
+        push!(epochs, a.epoch)  
     end
     return sort(unique(epochs))
 end
 
 
+"""
+function get_epochs_with_artifacts(eeg::EEG, channel_name::String)
+
+Given an `eeg` and a `channel` that's been artifact detected, returns a vector of all 30-sec epochs which contain an artifact in the channel.
+"""
 function get_epochs_with_artifacts(eeg::EEG, channel_name::String)
     artifacts = get_artifacts(eeg, channel_name)
     epochs = Int[]
     for a in artifacts
-        push!(epochs, a.epoch_range[1]:a.epoch_range[2]...)  
+        push!(epochs, a.epoch)  
     end
     return sort(unique(epochs))
 end
 
-
-
 """
-Incomplete but similar to previous method.
+function plot_artifacts_in_epochs(signal::TimeSeries, artifacts::ArtifactData, 
+                                  from::Integer, to::Integer; 
+                                  annotate::Bool=false)
+
+Given a `signal` and a non-empty vector of artifacts, plots the signal and highlights
+the existing artifacts from epoch `from` to epoch `to`. If `annotate` is set
+to true, artifacts are annotated with their mean change and test statistic.
 """
-function plot_artifacts_in_epochs(eeg::EEG, channel_name::String, from::Integer, to::Integer; 
+function plot_artifacts_in_epochs(signal::TimeSeries, artifacts::ArtifactData, 
+                                  from::Integer, to::Integer; 
                                   annotate::Bool=false)
 
     # Vector of artifacts in the desired region
     artifacts = filter(
-      x -> x.epoch_range[1] >= from && x.epoch_range[2] <= to, 
-      get_artifacts(eeg, channel_name)
+      x -> x.epoch >= from && x.epoch <= to, 
+      artifacts
     )
     if isempty(artifacts)
         @warn "No artifacts found in epoch range"
         return nothing
     end
     
-    signal = get_channel(eeg, channel_name)
     s, e = epochs_to_indexes(from, to, signal.fs, 30)
 
     t = (s:e) ./ signal.fs
@@ -186,5 +220,21 @@ function plot_artifacts_in_epochs(eeg::EEG, channel_name::String, from::Integer,
     return p
 end
 
-plot_artifacts_in_epochs(eeg, "EEG6", 200, 210)
+
+"""
+function plot_artifacts_in_epochs(eeg::EEG, channel_name::String,
+
+Given an `eeg` and an artifact-detected `channel_name`, plots the existing
+artifacts in the channel from epoch `from` to epoch `to`. If `annotate` is set
+to true, artifacts are annotated with their mean change and test statistic.
+"""
+function plot_artifacts_in_epochs(eeg::EEG, channel_name::String,
+                                  from::Integer, to::Integer; 
+                                  annotate::Bool=false)
+
+    signal = get_channel(eeg, channel_name)
+    artifacts = get_artifacts(eeg, channel_name)
+    plot_artifacts_in_epochs(signal, artifacts, from, to; annotate)
+end
+
 

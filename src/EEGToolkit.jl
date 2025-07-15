@@ -9,6 +9,8 @@ using Statistics
 using DataFrames
 using RCall 
 
+export resample 
+
 export Artifact 
 export ArtifactData
 
@@ -52,6 +54,7 @@ export detect_artifacts
 export plot_artifact
 export plot_artifacts_in_epochs
 
+include("resampling.jl")
 include("artifacts.jl")
 include("ts.jl")
 include("eeg.jl")

@@ -139,7 +139,8 @@ with the developer's laboratory at UPenn.
 The standardized procedure is as follows: split the signal into 30-sec epochs,
 each of which is split into 5-sec sub-epochs. Each epoch's spectrum is the 
 aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated 
-spectra from its epochs.
+spectra from its epochs. Rectangular window is used. Overlap is set to zero.
+No normalization is performed.
 
 """
 function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram
@@ -149,7 +150,6 @@ function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram
   # of its sub-epochs.
   psd_function = x -> PSD(x, fs, 5*fs; normalization=1, window_function=rect, overlap=0)
   Spectrogram(signal, 30*fs, psd_function)
-
 end
 
 
