@@ -177,7 +177,6 @@ minute per each 15.5 million-sized vector, on a mediocre computer.
 
 ```@docs
 detect_artifacts
-plot_artifact
 plot_artifacts_in_epochs
 ```
 
