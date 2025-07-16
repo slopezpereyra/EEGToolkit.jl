@@ -18,6 +18,9 @@ function __init__()
     end
 end
 
+export Staging
+export plot_hypnogram
+
 export resample 
 
 export Artifact 
@@ -62,6 +65,8 @@ export relative_spindle_power
 export detect_artifacts
 export plot_artifacts_in_epochs
 
+include("staging.jl")
+include("hypnograms.jl")
 include("ts.jl")
 include("artifacts.jl")
 include("eeg.jl")

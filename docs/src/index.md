@@ -52,6 +52,7 @@ analyzed in seconds.
 - NREM Period detection
 - Power spectral analysis
 - Spindle detection algorithms
+- Automated artifact detection
 
 ## Time series
 
@@ -161,11 +162,18 @@ analyze_eeg
 This package provides an interface of the CAPA statistical method ([Fisch,
 Eckley & Fearnhead,
 2021](https://onlinelibrary.wiley.com/doi/full/10.1002/sam.11586)) via the
-`RCall` package. CAPA is an automated anomaly detection algorithm which performs
-in linear time and is specifically designed for time series analysis. The
-adaptation provided in this package detects epidemic changes in the mean of 
-each segment of the EEG, where the segment length is a parameter. The algorithm
-is relatively fast, considering the high complexity of EEG recordings.
+`RCall` package. 
+
+> It is not a requirement to have `RCall` installed to use other
+> features of this package, but it is a requirement for artifact detection.
+> Calling artifact detection functions without `RCall` installed will result in 
+> an error and a prompt to install `RCall`.
+
+CAPA is an automated anomaly detection algorithm which performs in linear time
+and is specifically designed for time series analysis. The adaptation provided
+in this package detects epidemic changes in the mean of each segment of the EEG,
+where the segment length is a parameter. The algorithm is relatively fast,
+considering the high complexity of EEG recordings.
 
 
 > For instance, on a 15.5 million samples EEG
