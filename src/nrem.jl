@@ -46,7 +46,7 @@ function stage_to_word(stages, m)
 end
 
 """
-`nrem(staging::Vector, n::Integer=30, m::Integer=10)`
+function nrem(staging::Staging, n::Integer=30, m::Integer=10)
 
 Finds the `k` underlying NREM periods in a staging vector.
 Returns a vector of vectors `V` s.t. the `i`th vector in `V` 
@@ -64,13 +64,7 @@ The `staging` parameter is a vector containing only the
 symbols `1, …, 6, ?` where `5` denotes REM, `6` denotes 
 wakefulness, and `?` denotes unscored/unstaged.
 """
-function nrem(staging::Vector, n::Integer=30, m::Integer=10)
-
-  if Set(unique(staging)) ⊈ Set(["1", "2", "3", "4", "5", "6", "?"])
-    e = "Invalid stage score: Sleep stages should be 1, 2, 3, 4, 5, 6, ?, 
-      where 5 marks REM, 6 wakefulness, and ? unknown/unscored."
-    throw( ArgumentError(e) )
-  end
+function nrem(staging::Staging, n::Integer=30, m::Integer=10)
 
   α = stage_to_word(staging, m)
   φ = Regex("(?:[X](I*)){$n,}(?:5|6{$m,}|\$)")

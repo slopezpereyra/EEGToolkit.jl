@@ -6,13 +6,13 @@ Plots a hypnogram from a staging vector. Each element of the vector must be one 
 """
 function plot_hypnogram(staging::Staging)
     # Stage mapping: higher stages plotted lower (hypnogram convention)
-    stage_map = Dict("6" => 0,   # Wake
-                     "5" => 1,   # REM
-                     "4" => 2,   # N3/N4
-                     "3" => 3,   # N3
-                     "2" => 4,   # N2
-                     "1" => 5,   # N1
-                     "?" => NaN) # Unstaged
+    stage_map = Dict("6" => 5,   
+                     "5" => 4,   
+                     "1" => 3,
+                     "2" => 2,
+                     "3" => 1,
+                     "4" => 0,
+                     "?" => NaN) 
 
     t = 30/(60*60)
     y = map(s -> get(stage_map, string(s), NaN), staging)
@@ -22,10 +22,12 @@ function plot_hypnogram(staging::Staging)
     plot(x, y,
         xlabel = "Time (hours)",
         ylabel = "Stage",
-        yticks = ([0, 1, 2, 3, 4, 5], ["Wake", "REM", "N4", "N3", "N2", "N1"]),
+        yticks = ([0, 1, 2, 3, 4, 5], ["N4", "N3", "N2", "N1", "REM", "Wake"]),
         legend = false,
         title = "Hypnogram",
         color=:black,
         lw = 2)
 end
+
+
 
