@@ -53,6 +53,8 @@ analyzed in seconds.
 - Power spectral analysis
 - Spindle detection algorithms
 - Automated artifact detection
+- Resampling
+- Hypnograms
 
 ## Time series
 
@@ -188,6 +190,11 @@ detect_artifacts
 plot_artifacts_in_epochs
 ```
 
+## Resampling 
+
+```@docs
+resample 
+```
 
 
 ## Helpers
@@ -199,6 +206,32 @@ zero_pad
 
 ## Examples
 
+#### Resampling 
+
+```julia
+file = "myeeg.edf" 
+eeg = EEG(file)
+signal = get_channel(eeg, "EEG6")
+resampled = resample(signal, 10.0) # Resample signal to 10Hz.
+p1 = plot_ts(signal, 30, 30) # Plot epoch 30
+p2 = plot_ts(resampled, 30, 30) # Plot epoch 30
+
+p = plot(p1, p2, layout=(2, 1), link=:x, legend=false)
+```
+
+![](assets/resample_showcase.png)
+
+#### Hypnogram 
+
+
+```julia
+staging = CSV.read("staging.csv", DataFrame) # Some staging data
+replace!(staging, "NS" => "?", "REM" => "5", "WK" => "6", "N1" => "1", "N2" => "2", "N3" => "3", "N4" => "4") # Convert it to appropriate format (see Staging data type)
+staging = Staging(staging) # Convert to Staging data type
+p = plot_hypnogram(staging) # Plot
+```
+
+![](assets/hypnogram.png)
 
 #### Artifact detection 
 
@@ -227,18 +260,29 @@ julia> plot_artifacts_in_epochs(eeg, "EEG6", 30, 60; annotate=true)
 
 ![](assets/Anoms.png)
 
+#### Spectrogram 
+
+```julia
+file = "myeeg.edf" 
+eeg = EEG(file)
+signal = get_channel(eeg, "EEG6")
+psd = x -> PSD(x, signal.fs, signal.fs * 5)
+S = Spectrogram(signal, x -> custom_psd(x, signal.fs))
+
+plot_spectrogram(S; type::Int=2) # Type 2 for 3D plot.
+```
+
+
+![](assets/spetrogram_plot.png)
+
 #### NREM delta power
 
 This is an example script for computing the mean ``\delta`` (delta) power in
 each of the NREM periods of a sleep EEG. We will use the C3 channel.
 
 ```julia
-# First, import the package
-using EEGToolkit 
-
-# Assuming we have the stage data in a .csv and we have some function 
-# to read CSVs (e.g. from the CSV package)
-staging_df = some_function_to_read_csv("my_staging_data.csv")
+# Assuming we have the stage data in a .csv 
+staging_df = CSV.read("my_staging_data.csv", DataFrame)
 
 # Assuming the csv had a column named STAGES with the stage of each epoch.
 staging = staging_df.STAGES
@@ -259,23 +303,32 @@ epochs = segment(signal, signal.fs * 30)
 # PSD function to be used within each window in the spectrograms
 psd = x -> PSD(x, signal.fs, signal.fs * 5)
 
-mean_delta_powers = []
+# Compute the spectrogram of the full signal
+S = Spectrogram(signal, x -> custom_psd(x, signal.fs))
+
+# Retrieve the indexes (rows) which correspond to delta power.
+delta_band = findall(x -> x >= 0.3 && x <= 3.9, S.freq)
+
+powers = []
 for nrem_period in nrems
     # Extract the portion of the signal corresponding to this NREM period
     # This is a vector of vectors [vector_1, ..., vector_k], with the ith 
     # vector being the ith epoch in this NREM period.
     nrem_epochs = epochs[nrem_period]
 
-    # Compute spectrogram with each window being an epoch of this nrem period.
-    spec = Spectrogram(nrem_epochs, nrem_signal.fs*30, psd)
+    # From the spectrogram, retrieve the epochs corresponding to this NREM
+    # period and rows corresponding to delta power.
+    sub_spectrogram = S.spectrums[period, delta_band]
 
-    # Compute mean power in delta band (0.5 to 3.9 Hz) from the spectrogram.
-    δ = mean_band_power(spec, 0.5, 3.9)
-    # Store the result in the mean_delta_powers list.
-    push!(mean_delta_powers, δ)
+    # Compute the mean power within that NREM period. 
+    power = mean( sum(sub_spectrogram, dims=2) )
+    # Compute spectrogram with each window being an epoch of this nrem period.
+    spec = Spectrogram(nrem_epochs, .fs*30, psd)
+    # Add the computed mean delta power to the powers vector.
+    push!(powers, power)
 end
 
-# Now the ith element in `mean_delta_powers` is the mean delta power 
-# of the ith NREM period.
+# Now the ith element in `powers` is the mean delta power # of the ith NREM
+period.
 ```
 
