@@ -9,12 +9,14 @@
 A scientific package for computational EEG analysis with an
 emphasis on methodological transparency. Current features:
 
-- EEG Computational Toolkit
 - Loading EEG data
 - EEG visualization
 - Sleep stage handling and NREM period detection
 - Power spectral analysis
 - Spindle detection algorithms
+- Resampling 
+- Automated artifact detection 
+- Hypnograms
 
 Read the documentation and find examples [here](https://slopezpereyra.github.io/EEGToolkit.jl/dev/).
 

@@ -44,9 +44,9 @@ end
 
 
 """
-function plot_artifacts_in_epochs(signal::TimeSeries, artifacts::ArtifactData, 
+`function plot_artifacts_in_epochs(signal::TimeSeries, artifacts::ArtifactData, 
                                   from::Integer, to::Integer; 
-                                  annotate::Bool=false)
+                                  annotate::Bool=false)`
 
 Given a `signal` and a non-empty vector of artifacts, plots the signal and highlights
 the existing artifacts from epoch `from` to epoch `to`. If `annotate` is set

@@ -44,7 +44,7 @@ detect_artifacts <- function(signal, fs, epoch_length) {
 """
 
 """
-detect_artifacts(signal::TimeSeries, seg_length::Integer; penalty::Integer = 24)::Vector{Artifact}
+`detect_artifacts(signal::TimeSeries, seg_length::Integer; penalty::Integer = 24)::Vector{Artifact}`
 
 Performs artifact detection in the `signal`. Returns a vector of `Artifact` objects.
 

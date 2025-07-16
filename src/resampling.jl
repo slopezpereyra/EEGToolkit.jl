@@ -17,7 +17,7 @@ function rat_approximation(x::Float64, tol::Float64 = 1e-6)::Rational{Integer}
 end
 
 """
-resample(signal::TimeSeries, new_fs::Float64)::TimeSeries
+`resample(signal::TimeSeries, new_fs::Float64)::TimeSeries`
 
 Resamples the input `signal` to the given `new_fs`, using rational factor 
 resampling (L/M). Returns a new `TimeSeries` with the resampled signal and 

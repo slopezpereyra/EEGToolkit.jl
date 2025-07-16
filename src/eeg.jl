@@ -164,7 +164,7 @@ end
 
 
 """
-function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int)::Nothing
+`function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int)::Nothing`
 
 Performs artifact detection in the `eeg` channel named `channel_name`. 
 Stores resulting vector of `Artifact` objects in the `_artifacts` dictionary of the `eeg`
