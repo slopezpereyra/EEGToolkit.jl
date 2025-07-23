@@ -37,3 +37,54 @@ Base.getindex(s::Staging, i::Int) = s.stages[i]
 Base.setindex!(s::Staging, v::String, i::Int) = (s.stages[i] = v)
 Base.length(s::Staging) = length(s.stages)
 Base.iterate(s::Staging, state...) = iterate(s.stages, state...)
+
+"""
+`function transition_matrix(s::Staging)`
+
+Compute the transition matrix of a staging vector.
+"""
+function transition_matrix(s::Staging;
+                           from_labels=["6", "5", "1", "2", "3"],
+                           stage_names=["AWA", "REM", "N1", "N2", "N3"])
+
+    idx = Dict(stage => i for (i, stage) in enumerate(from_labels))
+    mat = zeros(Int, length(from_labels), length(from_labels))
+
+    for i in 1:(length(s)-1)
+        from = s[i]
+        to = s[i+1]
+        if haskey(idx, from) && haskey(idx, to)
+            mat[idx[from], idx[to]] += 1
+        end
+    end
+
+    return mat, stage_names
+end
+
+"""
+`function plot_transition_matrix(s::Staging)`
+
+Plots the transition matrix of a staging vector.
+"""
+function plot_transition_matrix(s::Staging)
+    mat, labels = transition_matrix(s)
+    n = length(labels)
+
+    heatmap(
+        labels, labels, mat;
+        xlabel="To",
+        ylabel="From",
+        title="Sleep Stage Transition Matrix",
+        c=:blues,
+        size=(600, 500),
+        right_margin=5Plots.mm,
+        colorbar_title="Count",
+        aspect_ratio=1,
+        yflip=true
+    )
+    print(mat)
+    annotate!(
+        vec(tuple.((1:n)'.-0.5, (1:n).-0.5, string.(mat)))
+    )
+        
+end

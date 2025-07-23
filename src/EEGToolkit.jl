@@ -20,6 +20,7 @@ end
 
 export Staging
 export plot_hypnogram
+export plot_transition_matrix
 
 export resample 
 
