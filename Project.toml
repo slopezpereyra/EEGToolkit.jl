@@ -1,7 +1,7 @@
 name = "EEGToolkit"
 uuid = "60d25398-4b8b-433c-a8d4-4fe867135cfd"
 authors = ["Santiago Lopez Pereyra"]
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
