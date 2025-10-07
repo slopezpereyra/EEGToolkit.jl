@@ -57,7 +57,7 @@ The β `penalty` defaults to `24`, which is much higher than the value recommend
 in Fisch et. al but matched human supervision on 78Hz sleep EEGs at the 
 developer's laboratory. 
 """
-function anomaly(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer;
+function r_detect_artifacts(x::Vector{<:AbstractFloat}, fs::Integer, seg_length::Integer;
                           penalty::Integer = 24)
     @rput x fs seg_length penalty
     R"result <- detect_artifacts(x, fs, seg_length)"

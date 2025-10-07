@@ -1,9 +1,11 @@
 
 """
-A struct for the EEG data type. An EEG is simply conceived as a collection of labeled time series.
+A struct for the EEG data type. An EEG is simply conceived as a collection of labeled time series,
+optionally with artifact data associated to each series.
 
 # Fields
 - `signals::Dict{String, TimeSeries}`: A dictionary mapping signal labels (strings) to arrays of floating-point values.
+- `artifacts::Dict{String, ArtifactData}`: A dictionary mapping signal labels (strings) to arrays of `Artifact` objects.
 
 # Constructors
 `EEG(file::String; id::String="")`: Instantiates an `EEG` from an EDF file (`file`).
@@ -181,14 +183,14 @@ developer's laboratory.
 """
 function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int; penalty::Integer = 24)::Nothing
     
-    if isdefined(EEGToolkit, :EEGToolkitR) && isdefined(EEGToolkit.EEGToolkitR, :anomaly)
+    if isdefined(EEGToolkit, :EEGToolkitR) && isdefined(EEGToolkit.EEGToolkitR, :r_detect_artifacts)
 
         signal = get_channel(eeg, channel_name)  
         x = signal.x 
         fs = signal.fs
 
 
-    start_indices, end_indices, mean_changes, test_statistics = EEGToolkit.EEGToolkitR.anomaly(x, fs, seg_length; penalty)
+    start_indices, end_indices, mean_changes, test_statistics = EEGToolkit.EEGToolkitR.r_detect_artifacts(x, fs, seg_length; penalty)
 
 
     artifacts = Artifact[]
