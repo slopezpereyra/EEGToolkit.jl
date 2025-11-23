@@ -248,6 +248,14 @@ struct Spectrogram
   function Spectrogram(ts::TimeSeries, window_length::Integer, psd_function::Function; kargs...)
     Spectrogram(ts.x, ts.fs, window_length, psd_function; kargs...)
   end
+
+  # A less opinionated constructor for relative power spectrum spectrograms.
+  function Spectrogram(time::Vector, freq::Vector{<:AbstractFloat}, 
+                       spectrums::Matrix{<:AbstractFloat}, segment_length::Integer)
+    # Automatically calculate the average spectrum for the last field
+    avg_spectra = vec(mean(spectrums, dims=1))
+    new(time, freq, spectrums, segment_length, avg_spectra)
+  end
 end
 
 
@@ -387,5 +395,77 @@ function total_band_power(psd::PSD, lower::AbstractFloat, upper::AbstractFloat)
   sum(psd.spectrum[indexes])
 end
 
+### RELATIVE POWER SPECTRUM 
+"""
+`relative_band_power(psd::PSD, lower::AbstractFloat, upper::AbstractFloat; total_range::Vector{<:AbstractFloat}=[])`
 
+Computes the relative power of a specific frequency band `[lower, upper]` for a PSD.
+Relative power is defined as the power in the band of interest divided by the total power.
+
+# Arguments
+- `psd`: The PSD object.
+- `lower`: Lower bound of the band of interest.
+- `upper`: Upper bound of the band of interest.
+- `total_range`: (Optional) A 2-element vector specifying the frequency range to consider as "Total Power". 
+   If empty (default), the total power of the entire available spectrum is used.
+"""
+function relative_band_power(psd::PSD, lower::AbstractFloat, upper::AbstractFloat; total_range::Vector{<:AbstractFloat}=Float64[])
+    absolute_band_power = total_band_power(psd, lower, upper)
+    
+    if isempty(total_range)
+        # Sum of the entire spectrum array
+        total_pwr = sum(psd.spectrum)
+    else
+        total_pwr = total_band_power(psd, total_range[1], total_range[2])
+    end
+
+    return absolute_band_power / total_pwr
+end
+
+"""
+`relative_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat; total_range::Vector{<:AbstractFloat}=[])`
+
+Computes the relative power of a specific frequency band over time from a Spectrogram. 
+Returns a Vector of relative power values (one per time window).
+
+# Arguments
+- `spec`: The Spectrogram object.
+- `lower`, `upper`: Band of interest limits.
+- `total_range`: (Optional) Range to consider as "Total Power" for normalization.
+"""
+function relative_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat; total_range::Vector{<:AbstractFloat}=Float64[])
+    
+    # Get the matrix of power for the specific band
+    band_matrix = freq_band(spec, lower, upper)
+    # Sum across frequency bins (dims=2) to get total power in band per time point
+    band_pwr_series = vec(sum(band_matrix, dims=2))
+    
+    if isempty(total_range)
+        # Sum across all frequency columns
+        total_pwr_series = vec(sum(spec.spectrums, dims=2))
+    else
+        tot_matrix = freq_band(spec, total_range[1], total_range[2])
+        total_pwr_series = vec(sum(tot_matrix, dims=2))
+    end
+
+    # Element-wise division to get ratio per time point
+    return band_pwr_series ./ total_pwr_series
+end
+
+"""
+`to_relative(spec::Spectrogram)`
+
+Converts a standard Spectrogram (Power/Frequency) into a Relative Spectrogram.
+Each time window (row) is normalized so that the sum of all frequency bins equals 1.0.
+Returns a new `Spectrogram` object.
+"""
+function to_relative(spec::Spectrogram)
+    # sum(spec.spectrums, dims=2) creates a column vector of total power per window
+    # We divide the matrix by this vector to normalize each row
+    total_power_per_window = sum(spec.spectrums, dims=2)
+    
+    relative_matrix = spec.spectrums ./ total_power_per_window
+    
+    return Spectrogram(spec.time, spec.freq, relative_matrix, spec.segment_length)
+end
 

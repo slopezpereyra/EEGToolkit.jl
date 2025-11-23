@@ -37,12 +37,13 @@ function sigma_index(x::Vector{<:AbstractFloat}, fs::Integer)
   function compute_index(amp::AmplitudeSpectrum)
     spindle_max_power =  f(amp, 10.5, 16, maximum)
     alpha_rejection_thresh = f(amp, 7.5, 10, maximum)
+    
     if alpha_rejection_thresh > spindle_max_power 
       return 0
     end
-    low_freq_mean_power = f(amp, 4, 10, y -> sum(y) / length(y))
-    high_freq_mean_power = f(amp, 20, 40, y -> sum(y) / length(y))
-    return 2 * spindle_max_power / ( low_freq_mean_power + high_freq_mean_power )
+    theta_mean = f(amp, 4, 8, y -> sum(y) / length(y))
+    alpha_mean = f(amp, 8, 10, y -> sum(y) / length(y))
+    return 2 * spindle_max_power / (alpha_mean + theta_mean)
   end
 
   Σ = map(compute_index, amps)
@@ -78,10 +79,39 @@ function relative_spindle_power(x::Vector{<:AbstractFloat}, fs::Integer)
     g(freq_band_power)
   end
 
-  spindle_band_powers = map(x -> f(x, 11, 15, sum), amps)
+  spindle_band_powers = map(x -> f(x, 11, 16, sum), amps)
   total_band_powers = map(x -> f(x, 0.5, 40, sum), amps)
 
   return spindle_band_powers ./ total_band_powers
 end
+
+# ----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

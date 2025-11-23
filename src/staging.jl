@@ -37,6 +37,8 @@ Base.getindex(s::Staging, i::Int) = s.stages[i]
 Base.setindex!(s::Staging, v::String, i::Int) = (s.stages[i] = v)
 Base.length(s::Staging) = length(s.stages)
 Base.iterate(s::Staging, state...) = iterate(s.stages, state...)
+Base.first(s::Staging) = first(s.stages)
+Base.tail(s::Staging) = tail(s.stages)
 
 """
 `function transition_matrix(s::Staging)`
