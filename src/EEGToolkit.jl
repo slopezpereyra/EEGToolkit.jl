@@ -58,6 +58,9 @@ export mean_band_power
 export total_band_power 
 export analyze_eeg
 
+export SlowWave
+export detect_slow_waves_massimini
+
 export nrem
 
 export sigma_index
@@ -74,6 +77,7 @@ include("eeg.jl")
 include("resampling.jl")
 include("psd.jl")
 include("spindles.jl")
+include("sw_detection.jl")
 include("nrem.jl")
 
 
