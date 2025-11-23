@@ -69,6 +69,8 @@ export relative_spindle_power
 export detect_artifacts
 export plot_artifacts_in_epochs
 
+export compute_wpli
+
 include("staging.jl")
 include("hypnograms.jl")
 include("ts.jl")
@@ -79,6 +81,6 @@ include("psd.jl")
 include("spindles.jl")
 include("sw_detection.jl")
 include("nrem.jl")
-
+include("connectivity.jl")
 
 end
