@@ -70,6 +70,7 @@ export detect_artifacts
 export plot_artifacts_in_epochs
 
 export compute_wpli
+export compute_coherence
 
 include("staging.jl")
 include("hypnograms.jl")
