@@ -1,4 +1,15 @@
 
+const STAGE_GROUPS = Dict(
+    :N1   => ["1"],
+    :N2   => ["2"],
+    :N3   => ["3"],
+    :N4   => ["4"],
+    :REM  => ["5"],
+    :WAKE => ["6"],
+    :NREM => ["1","2","3","4"]
+)
+
+
 """
 Structure for staging data. Essentially, any vector `x` of strings satisfying 
 
@@ -39,6 +50,34 @@ Base.length(s::Staging) = length(s.stages)
 Base.iterate(s::Staging, state...) = iterate(s.stages, state...)
 Base.first(s::Staging) = first(s.stages)
 Base.tail(s::Staging) = tail(s.stages)
+
+
+function stage_mask(staging::Staging; include)
+
+    allowed = if include isa Symbol
+        STAGE_GROUPS[include]
+
+    elseif include isa AbstractVector
+        vcat([
+            x isa Symbol ? STAGE_GROUPS[x] :
+            string(x)
+            for x in include
+        ]...)
+
+    else
+        throw(ArgumentError("Invalid include argument"))
+    end
+
+    allowed_set = Set(allowed)
+
+    mask = BitVector(undef, length(staging))
+
+    @inbounds for i in eachindex(staging)
+        mask[i] = staging[i] in allowed_set
+    end
+
+    return mask
+end
 
 """
 `function transition_matrix(s::Staging)`

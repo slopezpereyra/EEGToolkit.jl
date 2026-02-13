@@ -113,6 +113,13 @@ function nrem(staging::Staging, n::Integer=30, m::Integer=10)
     deleteat!(nrem, indx)
   end
 
-  return locs
-end
+  # Initialize a list of BitVectors (masks) filled with 'false'
+  masks = [falses(length(staging)) for _ in locs]
 
+  # Map the valid indices (locs) to 'true' in the corresponding masks
+  for (i, indices) in enumerate(locs)
+      masks[i][indices] .= true
+  end
+
+  return masks
+end

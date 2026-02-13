@@ -1,11 +1,15 @@
 
 """
-A struct for the EEG data type. An EEG is simply conceived as a collection of labeled time series,
-optionally with artifact data associated to each series.
+A struct for the EEG data type. An EEG is conceived as a collection of named
+time series with optional masks (named bit vectors) that can be applied to the
+time series for various purposes (e.g. artifact removal, sleep staging). Masks
+are either global (applicable to all channels) or channel-specific.
 
 # Fields
-- `signals::Dict{String, TimeSeries}`: A dictionary mapping signal labels (strings) to arrays of floating-point values.
-- `artifacts::Dict{String, ArtifactData}`: A dictionary mapping signal labels (strings) to arrays of `Artifact` objects.
+- `_signals::Dict{String, TimeSeries}`: A dictionary mapping signal labels (strings) to arrays of floating-point values.
+- `_global_masks::Dict{Symbol, BitVector}`: A dictionary mapping symbols to bit vectors representing global masks (e.g. NREM masks).
+- `_channel_masks::Dict{String, Dict{Symbol, BitVector}}`: A dictionary mapping channel names
+to masks (dictionaries mapping symbols to bit vectors). These are channel-specific masks (e.g. artifact masks).
 
 # Constructors
 `EEG(file::String; id::String="")`: Instantiates an `EEG` from an EDF file (`file`).
@@ -16,36 +20,52 @@ eeg_data = EEG("path/to/edf_data/data.edf")
 ```
 """
 struct EEG
-  _signals::Dict{String, TimeSeries}
-  _artifacts::Dict{String, ArtifactData}
+    _signals::Dict{String, TimeSeries}
+    _global_masks::Dict{Symbol,BitVector}
+    _channel_masks::Dict{String,Dict{Symbol,BitVector}}
 
-  function EEG(file::String)
-    annotation_flag = false
-    if !(endswith(file, ".edf"))
-      throw(ArgumentError("The EEG constructor must take as input a .edf file, but other filetype was provided."))
+    function EEG(file::String)
+
+        annotation_flag = false
+
+        endswith(file, ".edf") ||
+            throw(ArgumentError("EEG constructor requires .edf file"))
+
+        eeg = EDF.read(file)
+
+        S = Dict{String,TimeSeries}()
+
+        # Global masks start empty
+        G = Dict{Symbol,BitVector}()
+
+        # Channel masks
+        C = Dict{String,Dict{Symbol,BitVector}}()
+
+        for signal in eeg.signals
+
+            if signal isa EDF.AnnotationsSignal
+                annotation_flag = true
+                continue
+            end
+
+            x = EDF.decode(signal)
+            fs = Int(signal.header.samples_per_record /
+                     eeg.header.seconds_per_record)
+
+            label = signal.header.label
+
+            S[label] = TimeSeries(x, fs)
+
+            # Initialize empty mask dictionary for this channel
+            C[label] = Dict{Symbol,BitVector}()
+        end
+
+        if annotation_flag
+            @warn("EDF annotation signals were ignored.")
+        end
+
+        return new(S, G, C)
     end
-
-    eeg = EDF.read(file)
-    S = Dict()
-    A = Dict()
-
-    for signal in eeg.signals
-      if signal isa EDF.AnnotationsSignal 
-        annotation_flag = true
-        continue
-      end
-      x = EDF.decode(signal)
-      fs = Int(signal.header.samples_per_record / eeg.header.seconds_per_record)
-      S[signal.header.label] = TimeSeries(x, fs)
-      A[signal.header.label] = nothing
-    end
-
-    if annotation_flag 
-      @warn("The EDF file included annotation signals, which were ignored.")
-    end
-
-    new(S, A)
-  end
 end
 
 
@@ -165,80 +185,85 @@ function plot_eeg(eeg::EEG, s::Integer, e::Integer;
 end
 
 
-"""
-`function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int)::Nothing`
+function add_mask!(eeg::EEG, name::Symbol, mask::BitVector)
+    eeg._global_masks[name] = mask
+end
 
-Performs artifact detection in the `eeg` channel named `channel_name`. 
-Stores resulting vector of `Artifact` objects in the `_artifacts` dictionary of the `eeg`
-with key `channel_name`. 
+function add_mask!(eeg::EEG, channel::String, name::Symbol, mask::BitVector)
+    eeg._channel_masks[channel][name] = mask
+end
 
-Artifact detection is performed on each segment of the signal segmented with
-`seg_length`. On each segment, the CAPA algorithm (Fisch et. al 2022) is used 
-to detect epidemic distributional changes in the mean value of the segment. 
-The `penalty` is an integer value β such that β ln(n) (with `n` the segment's length) 
-is the penalty used by the CAPA algorithm to penalize the introduction of artifacts.
-The β `penalty` defaults to `24`, which is much higher than the value recommended 
-in Fisch et. al but matched human supervision on 78Hz sleep EEGs at the 
-developer's laboratory. 
-"""
-function detect_artifacts(eeg::EEG, channel_name::String, seg_length::Int; penalty::Integer = 24)::Nothing
-    
-    if isdefined(EEGToolkit, :EEGToolkitR) && isdefined(EEGToolkit.EEGToolkitR, :r_detect_artifacts)
+function combined_mask(eeg::EEG, channel::String)
 
-        signal = get_channel(eeg, channel_name)  
-        x = signal.x 
-        fs = signal.fs
+    masks = BitVector[]
 
+    append!(masks, values(eeg._global_masks))
 
-    start_indices, end_indices, mean_changes, test_statistics = EEGToolkit.EEGToolkitR.r_detect_artifacts(x, fs, seg_length; penalty)
-
-
-    artifacts = Artifact[]
-    for (start, stop, meanchg, teststat) in zip(start_indices, end_indices, mean_changes, test_statistics)
-        epoch = index_to_epoch(start, fs, 30)
-        offset = start - (epoch - 1) * (30 * fs)
-        subepoch = cld(offset, 5 * fs)
-
-        push!(artifacts, Artifact((start, stop), meanchg, teststat, epoch, subepoch))
+    if haskey(eeg._channel_masks, channel)
+        append!(masks, values(eeg._channel_masks[channel]))
     end
 
-        eeg._artifacts[channel_name] = artifacts
-        return
-    else
-        @warn "RCall functionality is not available and artifact detection depends on it. Please install RCall in your current environment."
-    end
+    isempty(masks) && return nothing
+
+    reduce(|, masks)
+end
+
+"""
+    get_masks(eeg::EEG)::Dict{Symbol,BitVector}
+
+Return all global (EEG-level) masks associated with `eeg`.
+
+Global masks apply to all channels (e.g. sleep staging, NREM masks).
+"""
+function get_masks(eeg::EEG)::Dict{Symbol,BitVector}
+    return eeg._global_masks
 end
 
 
 """
-function get_epochs_with_artifacts(eeg::EEG, channel_name::String)
+    get_masks(eeg::EEG, channel::String)::Dict{Symbol,BitVector}
 
-Given an `eeg` and a `channel` that's been artifact detected, returns a vector of all 30-sec epochs which contain an artifact in the channel.
+Return all masks associated with `channel`.
+
+This includes only channel-specific masks (e.g. artifact masks).
 """
-function get_epochs_with_artifacts(eeg::EEG, channel_name::String)
-    artifacts = get_artifacts(eeg, channel_name)
-    epochs = Int[]
-    for a in artifacts
-        push!(epochs, a.epoch)  
-    end
-    return sort(unique(epochs))
+function get_masks(eeg::EEG, channel::String)::Dict{Symbol,BitVector}
+
+    haskey(eeg._channel_masks, channel) ||
+        throw(ArgumentError("Channel '$channel' not found."))
+
+    return eeg._channel_masks[channel]
 end
 
 
 """
-function plot_artifacts_in_epochs(eeg::EEG, channel_name::String,
+    get_masks(eeg::EEG, name::Symbol)::BitVector
 
-Given an `eeg` and an artifact-detected `channel_name`, plots the existing
-artifacts in the channel from epoch `from` to epoch `to`. If `annotate` is set
-to true, artifacts are annotated with their mean change and test statistic.
+Return a global mask by name.
 """
-function plot_artifacts_in_epochs(eeg::EEG, channel_name::String,
-                                  from::Integer, to::Integer; 
-                                  annotate::Bool=false)
+function get_masks(eeg::EEG, name::Symbol)::BitVector
 
-    signal = get_channel(eeg, channel_name)
-    artifacts = get_artifacts(eeg, channel_name)
-    plot_artifacts_in_epochs(signal, artifacts, from, to; annotate)
+    haskey(eeg._global_masks, name) ||
+        throw(ArgumentError("Global mask :$name not found."))
+
+    return eeg._global_masks[name]
 end
 
 
+"""
+    get_masks(eeg::EEG, channel::String, name::Symbol)::BitVector
+
+Return mask `name` for the given channel.
+"""
+function get_masks(eeg::EEG, channel::String, name::Symbol)::BitVector
+
+    haskey(eeg._channel_masks, channel) ||
+        throw(ArgumentError("Channel '$channel' not found."))
+
+    masks = eeg._channel_masks[channel]
+
+    haskey(masks, name) ||
+        throw(ArgumentError("Mask :$name not found for channel '$channel'."))
+
+    return masks[name]
+end

@@ -157,6 +157,40 @@ function segment(ts::TimeSeries, L::Int; kargs...)::Vector{Vector{<:AbstractFloa
 end
 
 """
+`segment_matrix(v::Vector{T}, L::Int)`
+
+Reshapes a vector `v` into a matrix of segments of length `L`. 
+The resulting matrix has dimensions `(L, n_segments)`, where each column
+represents a segment.
+
+Any elements at the end of `v` that do not fit into a complete segment of length
+`L` are discarded (i.e., the operation is always symmetric/truncated).
+
+# Examples
+
+```julia
+> x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+> segment_matrix(x, 3)
+3×3 Matrix{Int64}:
+ 1  4  7
+ 2  5  8
+ 3  6  9
+```
+
+Note that the value `0` was discarded as it did not complete a segment of length 3.
+
+# Returns
+A `Matrix{T}` where:
+- The number of rows is `L`.
+- The number of columns is the number of full segments.
+"""
+function segment_matrix(v::Vector{T}, L::Int)::Matrix{T} where {T}
+    N = length(v)
+    n_segments = div(N, L)
+    return reshape(view(v, 1:L*n_segments), L, n_segments)
+end
+
+"""
 `seconds_to_time(seconds::Union{AbstractFloat, Integer})`
 
 Helper function: maps a time in seconds to a Time object.
@@ -307,68 +341,15 @@ function plot_ts(ts::TimeSeries; norm=false, ylab="Amplitude (uV)")::Plots.Plot
 end
 
 """
-function artifact_reject(signal::TimeSeries, anom_dict::Dict{Int, Vector{Int}}; epoch_length::Integer=30, subepoch_length::Integer=5)::Vector{Vector{<:AbstractFloat}};
+apply_epoch_mask(segs, mask)
 
-This function removes from a signal the sub-epochs which contain artifacts. 
-It requires a `TimeSeries` and a `Dict{Int, Vector{Int}}`, hereby termed 
-`anom_dict` (for anomaly dictionary). 
-
-`anom_dict` is understood to be such that `anom_dict[i] = [n₁, …, nₖ]`
-means the `i`th epoch has artifacts at sub-epochs `n₁, ..., nₖ`.
-
-The return value is a segmented signal (`Vector{Vector<:AbstractFloat}}`), each 
-of whose segments corresponds to an epoch with its artifcat-contaminated 
-sub-epochs removed. In other words, if the `result`   holds   the   return   
-value   of    this    function,    `result[i]`
-contains   what   is   left   from    the    `i`th    epoch    after    removing
-its   contaminated   sub-epochs.   It   is   possible   that   `result[i]`    is
-empty, if all sub-epochs of epoch `i` contained artifacts.
+Filters a vector of segments using a BitVector mask.
 """
-function artifact_reject(signal::TimeSeries, anom_dict::Dict{Int, Vector{Int}}; epoch_length::Integer=30, subepoch_length::Integer=5)::Vector{Vector{<:AbstractFloat}}
+function apply_epoch_mask(segs::Vector{Vector{T}}, mask::BitVector) where T
+    length(segs) == length(mask) ||
+        throw(ArgumentError("Mask length must equal number of segments"))
 
-  N = num_epochs(signal, epoch_length)
-
-  # The signal is symmetrically split, which means last epoch is dropped,
-  # and we must ensure it's not in the dictionary either.
-  if haskey(anom_dict, N + 1)
-      delete!(anom_dict, N + 1)
-  end
-
-  # Safety check
-  if any(x -> x < 0 || x > N, keys(anom_dict))
-    msg = "The `anom_dict` argument contains keys greater than the number of epochs in the `signal` or 
-      non-positive."
-    throw( ArgumentError(msg)  )
-  end
-
-  # Actual procedure
-  T = typeof(signal.x[1])
-
-  epochs = segment(signal, signal.fs * epoch_length; symmetric = true)
-  windows = map(e -> segment(e, signal.fs * subepoch_length; symmetric=true), epochs)
-
-  # Iterate through each ( epoch , contaminated sub-epochs ) pair
-  for (epoch, subepochs) in anom_dict
-    # Sort the indexes of contaminated sub-epochs to be used in `deleteat!`.
-    sorted_contaminated_epochs = sort(subepochs)
-    # Delete from the epoch the contaminated sub-epochs.
-    deleteat!(windows[epoch], sorted_contaminated_epochs)
-  end
-
-  # Collect each epoch after artifact removal, return vector of clean epochs.
-  [Vector{T}(vcat(window...)) for window in windows]
+    return segs[mask]
 end
 
 
-"""
-`artifact_reject(signal::TimeSeries, anoms::Vector{Integer}; epoch_length::Integer=30)`
-
-An anomaly vector ``\\vec{x} \\in \\mathbb{N}^{n}`` is a sorted vector
-whose values are those epochs in an `TimeSeries` that contain 
-anomalies or artifacts. This function segments the TimeSeries and filters out all 
-epochs containing artifacts.
-"""
-function artifact_reject(signal::TimeSeries, anoms::Vector{Integer}; epoch_length::Integer=30)
-  epochs = segment(signal, signal.fs * epoch_length; symmetric = true)
-  deleteat!( epochs, anoms )
-end

@@ -64,99 +64,303 @@ function detect_slow_waves_massimini(
     dur_total::Tuple{Float64, Float64}=(0.5, 2.0)
 ) where T <: AbstractFloat
 
-    # 1. Filtering
-    responsetype = Bandpass(freq_band[1], freq_band[2]; fs=fs)
+    # FIX: Normalize frequencies by Nyquist
+    nyquist = fs / 2
+    responsetype = Bandpass(freq_band[1]/nyquist, freq_band[2]/nyquist)
     designmethod = Butterworth(2)
     clean_signal = filtfilt(digitalfilter(responsetype, designmethod), signal)
 
     # 2. Identify Zero-Crossings
-    # zx_indices will contain the index *before* the crossing occurs.
     zx_indices = findall(x -> x < 0, clean_signal[1:end-1] .* clean_signal[2:end])
 
     detected_waves = SlowWave[]
     
-    # We need at least 3 crossings to define a full cycle (Down -> Up)
     if length(zx_indices) < 3
         return detected_waves
     end
 
-    # Iterate through crossings to find candidate negative half-waves
     i = 1
     while i <= length(zx_indices) - 2
-        
-        # Define candidate indices
-        t1 = zx_indices[i]      # Start of potential wave
-        t2 = zx_indices[i+1]    # Mid-point
-        t3 = zx_indices[i+2]    # End of potential wave
+        t1 = zx_indices[i]
+        t2 = zx_indices[i+1]
+        t3 = zx_indices[i+2]
 
-        # Extract segments
-        # Note: We add 1 to t2/t3 for start range to avoid double counting indices
         neg_phase_view = @view clean_signal[t1:t2]
         pos_phase_view = @view clean_signal[t2:t3]
 
-        # CRITERION A: POLARITY CHECK
-        if mean(neg_phase_view) >= 0
-            i += 1
-            continue
-        end
-
-        # CRITERION B: DURATION (Negative Half-Wave)
+        # Criteria Checks
+        if mean(neg_phase_view) >= 0; i += 1; continue; end
+        
         dur_n = (t2 - t1) / fs
-        if !(dur_neg[1] <= dur_n <= dur_neg[2])
-            i += 1
-            continue
-        end
+        if !(dur_neg[1] <= dur_n <= dur_neg[2]); i += 1; continue; end
 
-        # CRITERION C: DURATION (Full Wave)
         dur_t = (t3 - t1) / fs
-        if !(dur_total[1] <= dur_t <= dur_total[2])
-            i += 1
-            continue
-        end
+        if !(dur_total[1] <= dur_t <= dur_total[2]); i += 1; continue; end
 
-        # CRITERION D: AMPLITUDE (Negative Peak)
         min_val, min_idx_rel = findmin(neg_phase_view)
-        neg_peak_idx = t1 + min_idx_rel - 1
+        if min_val > -abs(amp_neg); i += 1; continue; end
 
-        if min_val > -abs(amp_neg) 
-            i += 1
-            continue
-        end
-
-        # CRITERION E: AMPLITUDE (Peak-to-Peak)
         max_val, max_idx_rel = findmax(pos_phase_view)
-        pos_peak_idx = t2 + max_idx_rel - 1
-        
         ptp = max_val - min_val
-        
-        if ptp < amp_ptp
-            i += 1
-            continue
-        end
+        if ptp < amp_ptp; i += 1; continue; end
 
-        # SUCCESS
+        # Register Wave
         wave = SlowWave(
-            t1,
-            neg_peak_idx,
-            t2,
-            pos_peak_idx,
-            t3,
-            min_val,
-            max_val,
-            ptp,
-            dur_t,
-            1.0 / dur_t
+            t1, t1 + min_idx_rel - 1, t2, t2 + max_idx_rel - 1, t3,
+            min_val, max_val, ptp, dur_t, 1.0 / dur_t
         )
         push!(detected_waves, wave)
-
-        # Move index forward. 
         i += 2
     end
-
     return detected_waves
 end
 
-# Wrapper for TimeSeries object
+# Wrapper
 function detect_slow_waves_massimini(ts::TimeSeries; kwargs...)
     detect_slow_waves_massimini(ts.x, ts.fs; kwargs...)
+end
+
+
+
+# Helper function to ensure consistent, crash-free filtering
+function apply_bandpass(signal::AbstractVector, fs::Real, freq_band::Tuple{Real, Real})
+    nyquist = fs / 2
+    # Normalize frequencies: f_Hz / f_Nyquist
+    norm_low = freq_band[1] / nyquist
+    norm_high = freq_band[2] / nyquist
+    
+    responsetype = Bandpass(norm_low, norm_high)
+    designmethod = Butterworth(2) # Massimini uses 2nd order (zero-phase becomes 4th order eff.)
+    
+    return filtfilt(digitalfilter(responsetype, designmethod), signal)
+end
+
+"""
+    plot_single_wave(signal, fs, wave; padding=2.0, freq_band=(0.1, 4.0))
+
+Plots a specific detected Slow Wave with context.
+"""
+function plot_single_wave(signal::Vector, fs::Number, wave; 
+                          padding::Float64=2.0, 
+                          freq_band::Tuple{Float64, Float64}=(0.1, 4.0))
+    
+    # 1. Calculate context window with extra buffer for filtering
+    # A buffer prevents edge artifacts from the filter appearing in the plot
+    filter_buffer = round(Int, 5.0 * fs) 
+    
+    pad_samples = round(Int, padding * fs)
+    
+    # Indices for the visual window
+    plot_start = max(1, wave.start_idx - pad_samples)
+    plot_end = min(length(signal), wave.end_idx + pad_samples)
+    
+    # Indices for the filtering window (Visual + Buffer)
+    filt_start = max(1, plot_start - filter_buffer)
+    filt_end = min(length(signal), plot_end + filter_buffer)
+    
+    # Extract raw segment
+    raw_segment = signal[filt_start:filt_end]
+    
+    # 2. Apply Filter (using the helper with fixed Bandpass)
+    clean_segment = apply_bandpass(raw_segment, fs, freq_band)
+    
+    # 3. Slice the clean segment back to the plotting window
+    # Map global indices to local filtered segment indices
+    local_plot_start = plot_start - filt_start + 1
+    local_plot_end = plot_end - filt_start + 1
+    
+    sig_context = clean_segment[local_plot_start:local_plot_end]
+    
+    # Indices of the wave relative to the context vector
+    wave_rel_start = wave.start_idx - plot_start + 1
+    wave_rel_end = wave.end_idx - plot_start + 1
+    
+    sig_wave = sig_context[wave_rel_start:wave_rel_end]
+    
+    # 4. Create Time Vectors (in seconds)
+    # Align time axis so the wave start is meaningful or just absolute time
+    t_context = (plot_start:plot_end) ./ fs
+    t_wave = (wave.start_idx:wave.end_idx) ./ fs
+    
+    # 5. Create Plot
+    p = plot(t_context, sig_context, 
+        label="Context (Filtered)", 
+        color=:gray, 
+        alpha=0.6, 
+        lw=1.5,
+        title="Slow Wave Event (Dur: $(round(wave.duration, digits=2))s)",
+        xlabel="Time (s)", 
+        ylabel="Amplitude (µV)",
+        legend=:topright
+    )
+    
+    # Overlay the detected wave in Red
+    plot!(p, t_wave, sig_wave, 
+        label="Detected SW", 
+        color=:red, 
+        lw=2.5
+    )
+    
+    # Mark Peaks
+    scatter!(p, [wave.neg_peak_idx/fs], [wave.neg_amp], color=:blue, ms=6, label="Neg Peak")
+    scatter!(p, [wave.pos_peak_idx/fs], [wave.pos_amp], color=:green, ms=6, label="Pos Peak")
+    
+    # Mark Zero Crossings
+    vline!(p, [wave.start_idx/fs, wave.mid_crossing_idx/fs, wave.end_idx/fs], 
+        color=:black, 
+        linestyle=:dash, 
+        label=""
+    )
+    
+    # Draw 0uV line
+    hline!(p, [0], color=:black, lw=0.5, label="")
+    
+    return p
+end
+
+# Wrapper for TimeSeries
+function plot_single_wave(ts::TimeSeries, wave; kwargs...)
+    plot_single_wave(ts.x, ts.fs, wave; kwargs...)
+end
+
+"""
+    plot_average_morphology(signal, fs, waves; window=1.0, align=:neg_peak)
+
+Calculates and plots the Grand Average of detected waves.
+"""
+function plot_average_morphology(signal::Vector, fs::Number, waves::Vector; 
+                                 window::Float64=1.0, 
+                                 freq_band::Tuple{Float64, Float64}=(0.1, 4.0),
+                                 align::Symbol=:neg_peak)
+    
+    # 1. Filter the entire signal (or large chunks) first for efficiency
+    # Note: If signal is massive, you might want to filter per segment, 
+    # but for typical sleep EEG, filtering the whole vector is fine.
+    println("Filtering signal for Grand Average...")
+    clean_signal = apply_bandpass(signal, fs, freq_band)
+    
+    win_samples = round(Int, window * fs)
+    # Time axis centered at 0
+    time_axis = range(-window, window, length=2*win_samples+1)
+    
+    # Collect valid segments
+    segments = Vector{Float64}[]
+    
+    for w in waves
+        # Determine center index based on alignment choice
+        center = if align == :mid
+            w.mid_crossing_idx
+        elseif align == :start
+            w.start_idx
+        elseif align == :pos_peak
+            w.pos_peak_idx
+        else # Default to :neg_peak
+            w.neg_peak_idx
+        end
+        
+        # Extract if bounds permit
+        start_idx = center - win_samples
+        end_idx = center + win_samples
+        
+        if start_idx >= 1 && end_idx <= length(clean_signal)
+            push!(segments, clean_signal[start_idx:end_idx])
+        end
+    end
+    
+    if isempty(segments)
+        @warn "No waves fit within the window bounds."
+        return plot()
+    end
+    
+    # Stack into Matrix (Rows=Time, Cols=Waves)
+    # hcat expects vectors, so we get (Time x N)
+    seg_matrix = hcat(segments...)
+    
+    # Compute Statistics across columns (dims=2)
+    mean_wave = vec(mean(seg_matrix, dims=2))
+    std_wave = vec(std(seg_matrix, dims=2))
+    
+    # Determine Labels
+    title_text = "Grand Average (N=$(length(segments)), Aligned: $(align))"
+    xlabel_text = "Time relative to alignment (s)"
+    
+    # Plotting
+    p = plot(time_axis, mean_wave, 
+        ribbon=std_wave, 
+        fillalpha=0.2, 
+        color=:blue, 
+        lw=3, 
+        label="Mean ± SD",
+        title=title_text,
+        xlabel=xlabel_text,
+        ylabel="Amplitude (µV)"
+    )
+    
+    # Add guidelines
+    vline!(p, [0], color=:black, linestyle=:dash, label="Center")
+    hline!(p, [0], color=:black, lw=1, label="")
+    
+    # Annotations
+    if align == :neg_peak
+        annotate!(p, 0, minimum(mean_wave), text("↓ Down-state", :top, 8))
+    end
+    
+    return p
+end
+
+# Wrapper for TimeSeries
+function plot_average_morphology(ts::TimeSeries, waves::Vector; kwargs...)
+    plot_average_morphology(ts.x, ts.fs, waves; kwargs...)
+end
+
+"""
+    compute_morphology_metrics(waves::Vector{SlowWave}, signal::AbstractVector, fs::Number)
+
+Computes aggregate morphology statistics for a set of waves. 
+Total duration is inferred directly from the length of the provided `signal`.
+
+Calculates:
+1. Density (Count / min)
+2. Mean Duration
+3. Mean PTP Amplitude
+4. Mean Slope (Down-state slope)
+"""
+function compute_morphology_metrics(waves::Vector{SlowWave}, signal::AbstractVector, fs::Number)
+    if isempty(waves)
+        return (density=0.0, mean_dur=NaN, mean_ptp=NaN, mean_slope=NaN)
+    end
+
+    # DEDUCTION: Calculate duration from the signal itself
+    total_duration_sec = length(signal) / fs
+    duration_min = total_duration_sec / 60.0
+    
+    # 1. Density
+    count = length(waves)
+    density = count / duration_min
+
+    # 2. Mean Duration
+    mean_dur = mean([w.duration for w in waves])
+
+    # 3. Mean PTP
+    mean_ptp = mean([w.ptp_amp for w in waves])
+
+    # 4. Mean Slope (1st Segment: Start -> NegPeak)
+    slopes = Float64[]
+    for w in waves
+        # Calculate time delta for the descending slope
+        dt = (w.neg_peak_idx - w.start_idx) / fs
+        
+        # Avoid division by zero (though unlikely in valid waves)
+        if dt > 0
+            push!(slopes, abs(w.neg_amp) / dt)
+        end
+    end
+    mean_slope = isempty(slopes) ? NaN : mean(slopes)
+
+    return (density, mean_dur, mean_ptp, mean_slope)
+end
+
+# Wrapper for TimeSeries object
+function compute_morphology_metrics(waves::Vector{SlowWave}, ts::TimeSeries)
+    compute_morphology_metrics(waves, ts.x, ts.fs)
 end

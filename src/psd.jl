@@ -130,26 +130,98 @@ end
 
 
 """
-`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram`
+`spectrum(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram`
 
-Perform a standardized analysis of an EEG signal. This analysis procedure 
-succesfully replicated results from Washington State University in collaboration
-with the developer's laboratory at UPenn. 
+Wrapper for power spectral analysis over a signal. Defaults to Welch's method
+with a Hanning window, but Barlett's method can be used by setting `overlap=0`
+and `window_function=rect`.
 
-The standardized procedure is as follows: split the signal into 30-sec epochs,
-each of which is split into 5-sec sub-epochs. Each epoch's spectrum is the 
-aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated 
-spectra from its epochs. Rectangular window is used. Overlap is set to zero.
-No normalization is performed.
+Signal is split into 30-sec epochs, and the spectrum is computed as the
+aggregated spectra of these epochs. An optional `mask` may be applied to the
+epochs, which should be a `BitVector` of the same length as the number of
+epochs, with `true` for epochs to include in the analysis and `false` for epochs
+to exclude.
+
+A `rejection` mask may also be applied, which should also be a `BitVector` of
+the same length as the number of epochs, with `true` for epochs to reject (e.g.
+due to artifacts) and `false` for epochs to keep. If both a `mask` and a
+`reject` mask are provided, the final set of epochs included in the analysis
+will be those that are `true` in the `mask` and `false` in the `reject` mask.
+
+A normalization factor can be set with the `normalization` argument, which
+defaults to `1` (no normalization). For innstance, setting `normalization =
+signal.fs` will normalize the spectrum by the sampling rate, thus computing the
+power spectral density.
 
 """
-function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram
+function spectrum(signal::TimeSeries; 
+                  window_function::Function=hanning,
+                  overlap::Union{<:AbstractFloat,Integer}=0.5,
+                  normalization::Real=1,
+                  mask::Union{Nothing,BitVector}=nothing,
+                  reject::Union{Nothing,BitVector}=nothing,
+                  dB=false) 
 
-  # The function to be applied to each epoch. Observe that 5*fs is the 
-  # sub-epoch length: each epoch's spectrum will be the aggregated spectra 
-  # of its sub-epochs.
-  psd_function = x -> PSD(x, fs, 5*fs; normalization=1, window_function=rect, overlap=0)
-  Spectrogram(signal, 30*fs, psd_function)
+    epoch_len = 30 * signal.fs
+    segs = segment(signal.x, epoch_len; symmetric=true)
+    
+    # 1. Validación de longitud (defensiva)
+    n_epochs = length(segs)
+    keep_mask = trues(n_epochs)
+    
+    if mask !== nothing
+        if length(mask) != n_epochs
+            throw(ArgumentError("La longitud de 'mask' no coincide con el número de épocas."))
+        end
+        keep_mask .&= mask
+    end
+    
+    # Keep = Keep AND (NOT Reject)
+    if reject !== nothing
+        if length(reject) != n_epochs
+            throw(ArgumentError("La longitud de 'reject' no coincide con el número de épocas."))
+        end
+        keep_mask .&= (.!reject) # .!reject is element-wise bit flip.
+    end
+
+    segs = apply_epoch_mask(segs, keep_mask)
+
+    psd_function = x -> PSD(x, signal.fs, 5*signal.fs;
+                            normalization=normalization,
+                            window_function=window_function,
+                            overlap=overlap) # [cite: 31]
+
+    Spectrogram(segs, psd_function; dB=dB)
+end
+
+"""
+spectrum(eeg::EEG, channel::String; ...)
+
+Wrapper para realizar análisis espectral sobre un canal específico de un EEG.
+Soporta máscaras de inclusión (`mask`) y de rechazo (`reject`).
+
+# Arguments
+- `mask`: BitVector para incluir épocas (ej. estadios de sueño).
+- `reject`: BitVector para excluir épocas (ej. artefactos).
+"""
+function spectrum(eeg::EEG,
+                  channel::String;
+                  window_function::Function=hanning,
+                  overlap::Union{<:AbstractFloat,Integer}=0.5,
+                  normalization::Real=1,
+                  mask::Union{Nothing,BitVector}=nothing,
+                  reject::Union{Nothing,BitVector}=nothing,
+                  dB=false) 
+
+    ts = get_channel(eeg, channel) 
+    spectrum(ts;
+        window_function = window_function,
+        overlap = overlap,
+        normalization = normalization,
+        mask = mask, 
+        reject = reject,
+        dB = dB
+    )
 end
 
 

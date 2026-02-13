@@ -48,10 +48,13 @@ analyzed in seconds.
 ## Package Features
 - Loading and processing EEG data
 - EEG visualization
+- Masking and conditional analysis
 - Sleep stage handling 
 - NREM Period detection
 - Power spectral analysis
 - Spindle detection algorithms
+- Slow Wave detection
+- Connectivity metrics (wPLI and coherence)
 - Automated artifact detection
 - Resampling
 - Hypnograms
@@ -74,8 +77,19 @@ seconds_to_time
 EEG
 remove_channel!
 plot_eeg
-artifact_reject
 ```
+
+## Masking and Conditional Analysis
+
+This package allows for the use of **masks** (BitVectors) to perform conditional
+analysis. Masks allow you to selectively include or reject specific epochs
+during analysis without modifying the underlying raw data.
+
+- **Inclusion Masks (`mask`)**: A `BitVector` where `true` indicates epochs to *keep* (e.g., only analyzing NREM sleep).
+- **Rejection Masks (`reject`)**: A `BitVector` where `true` indicates epochs to *discard* (e.g., artifact-laden epochs).
+
+These are particularly useful when combining sleep staging with artifact detection.
+
 
 ## NREM Period detection 
 
@@ -133,6 +147,31 @@ inferable from the decomposition.
 nrem
 ```
 
+## Slow wave detection
+This package implements the detection of Slow Wave Oscillations (SWO) based on
+the negative-peak method described by [Massimini et al.
+(2004)](https://pubmed.ncbi.nlm.nih.gov/15190128/). This includes detection,
+morphology statistics, and visualization.
+
+```@docs
+SlowWave
+detect_slow_waves_massimini
+compute_morphology_metrics
+plot_single_wave
+plot_average_morphology
+```
+
+## Connectivity Metrics
+
+This package allows for the estimation of functional connectivity between EEG
+signals, including Weighted Phase Lag Index (wPLI) and Magnitude-Squared
+Coherence.
+
+```@docs
+compute_wpli
+compute_coherence
+```
+
 ## Spindle detection
 
 This package implements two spindle detection algorithms discussed in [O'Reilly
@@ -161,36 +200,54 @@ analyze_eeg
 
 ## Artifact detection 
 
-This package provides an interface of the CAPA statistical method ([Fisch,
-Eckley & Fearnhead,
-2021](https://onlinelibrary.wiley.com/doi/full/10.1002/sam.11586)) via the
-`RCall` package. 
-
-> It is not a requirement to have `RCall` installed to use other
-> features of this package, but it is a requirement for artifact detection.
-> Calling artifact detection functions without `RCall` installed will result in 
-> an error and a prompt to install `RCall`.
-
-CAPA is an automated anomaly detection algorithm which performs in linear time
-and is specifically designed for time series analysis. The adaptation provided
-in this package detects epidemic changes in the mean of each segment of the EEG,
-where the segment length is a parameter. The algorithm is relatively fast,
-considering the high complexity of EEG recordings.
 
 
-> For instance, on a 15.5 million samples EEG
-> record with 8 channels (all artifact-detected), with a segment length of `30 *
-> 5` seconds, the algorithm took ≈8.6 minutes on a computer with an I3 processor
-> and 8GB of RAM. That's 8.6/8 = 1.075 minutes per channel, i.e. practically a
-> minute per each 15.5 million-sized vector, on a mediocre computer.
+This package provides native Julia implementations for automated artifact
+detection in EEG signals. Two distinct approaches are available: one based on
+time-domain statistical properties (Hjorth parameters) and another based on
+frequency-domain spectral power anomalies (Buckelmueller method).
+
+Both methods operate on 30-second epochs and return a boolean mask where `true`
+indicates a rejected (artifact) epoch.
+
+### Hjorth Parameters Method
+
+The `hjorth_artifacts` function detects artifacts using **global
+outlier detection** based on Hjorth parameters: Activity (variance), Mobility,
+and Complexity.
+
+This method assumes that clean EEG epochs follow a standard distribution of
+these parameters. It calculates the global mean and standard deviation for the
+entire signal and flags epochs that deviate by more than `z_thresh` standard
+deviations.
+
+The algorithm can run for `k` iterations. In each pass, it recalculates the
+global statistics (mean/std) excluding the artifacts found in previous rounds.
+This progressively "tightens" the threshold, catching smaller artifacts that
+were initially masked by extreme outliers.
+
+### Buckelmueller Method
+
+The `buckelmueller_artifacts` function detects artifacts using a **local
+spectral power ratio** criterion. This is particularly useful for detecting
+transient high-energy events that stand out against their immediate background.
+
+For each epoch, the Power Spectral Density (PSD) is computed, and power is
+extracted for the **Delta** (0.6–4.6 Hz) and **Beta** (40–60 Hz) bands. An epoch
+is flagged if its band power exceeds the local average of its neighbors (within
+a sliding window) by a specified ratio.
 
 
 ```@docs
-detect_artifacts
-plot_artifacts_in_epochs
+buckelmueller_artifacts
+hjorth_artifacts
 ```
 
 ## Resampling 
+
+The package provides rational factor resampling to change the sampling rate of a
+`TimeSeries`. This is implemented via polyphase filtering (inserting zeros,
+low-pass filtering, and decimating) to avoid aliasing artifacts.
 
 ```@docs
 resample 
@@ -233,102 +290,36 @@ p = plot_hypnogram(staging) # Plot
 
 ![](assets/hypnogram.png)
 
-#### Artifact detection 
+#### Artifact detection + masking + power spectral analysis
 
-Consider the REPL commands below, which read an EEG from an EDF file, perform
-artifact detection on each 5min segment of the EEG channel `EEG6`, and plots the
-artifacts from epochs 30 to 60 with annotations.
-
-```julia 
-julia> file = "SWAIVF004.edf" 
-"SWAIVF004.edf"
-julia> eeg = EEG(file)
-julia> detect_artifacts(eeg, "EEG6", 60*5)  # epoch length = 5 minutes
-julia> get_artifacts(eeg) # Just to show what changes after running `detect artifacts`  on channel EEG6.
-Dict{String, Union{Nothing, Vector{Artifact}}} with 11 entries:
-  "Light"    => nothing
-  "Sound"    => nothing
-  "HR"       => nothing
-  "PAT"      => nothing
-  "Head Pos" => nothing
-  "EEG6"     => Artifact[Artifact((1, 152), 33.1202, 5034.28, 1, 1), Artifact((173, 283), 9.70824, 1077.61, 1, 1), Artifact((23575, 23610), 32.582, 1172.95, 11, 1), Artifact((24197, …
-  "EEG5"     => nothing
-  ⋮          => ⋮
-
-julia> plot_artifacts_in_epochs(eeg, "EEG6", 30, 60; annotate=true)
-```
-
-![](assets/Anoms.png)
-
-#### Spectrogram 
+The following example demonstrates how to iterate through NREM periods, applying
+both an inclusion mask (the NREM period itself) and a rejection mask (artifacts
+detected via Buckelmueller and Hjorth methods) to compute a clean spectrogram
+for each period.
 
 ```julia
-file = "myeeg.edf" 
-eeg = EEG(file)
-signal = get_channel(eeg, "EEG6")
-psd = x -> PSD(x, signal.fs, signal.fs * 5)
-S = Spectrogram(signal, x -> custom_psd(x, signal.fs))
+# Assume `staging` is a Staging object and `eeg` is loaded
+nrem_periods = nrem(staging)
+ts = get_channel(eeg, "EEG C4-A1")
+S = []
 
-plot_spectrogram(S; type::Int=2) # Type 2 for 3D plot.
-```
-
-
-![](assets/spetrogram_plot.png)
-
-#### NREM delta power
-
-This is an example script for computing the mean ``\delta`` (delta) power in
-each of the NREM periods of a sleep EEG. We will use the C3 channel.
-
-```julia
-# Assuming we have the stage data in a .csv 
-staging_df = CSV.read("my_staging_data.csv", DataFrame)
-
-# Assuming the csv had a column named STAGES with the stage of each epoch.
-staging = staging_df.STAGES
-
-# We read an EEG that has channels C3-A2 and F3-A1. We assume the CSV had a 
-# column called STAGES with the stages of each epoch.
-eeg = EEG(edf_file)
-
-# We extract the TimeSeries object corresponding to C3-A2
-signal = get_channel(eeg, "C3-A2") 
-
-# Detect the NREM periods with default parameters.
-nrems = nrem(staging)
-
-# Split the C3 signal into 30-second windows (not-overlapping).
-epochs = segment(signal, signal.fs * 30)
-
-# PSD function to be used within each window in the spectrograms
-psd = x -> PSD(x, signal.fs, signal.fs * 5)
-
-# Compute the spectrogram of the full signal
-S = Spectrogram(signal, x -> custom_psd(x, signal.fs))
-
-# Retrieve the indexes (rows) which correspond to delta power.
-delta_band = findall(x -> x >= 0.3 && x <= 3.9, S.freq)
-
-powers = []
-for nrem_period in nrems
-    # Extract the portion of the signal corresponding to this NREM period
-    # This is a vector of vectors [vector_1, ..., vector_k], with the ith 
-    # vector being the ith epoch in this NREM period.
-    nrem_epochs = epochs[nrem_period]
-
-    # From the spectrogram, retrieve the epochs corresponding to this NREM
-    # period and rows corresponding to delta power.
-    sub_spectrogram = S.spectrums[period, delta_band]
-
-    # Compute the mean power within that NREM period. 
-    power = mean( sum(sub_spectrogram, dims=2) )
-    # Compute spectrogram with each window being an epoch of this nrem period.
-    spec = Spectrogram(nrem_epochs, .fs*30, psd)
-    # Add the computed mean delta power to the powers vector.
-    push!(powers, power)
+for i in 1:length(nrem_periods)
+    # 1. Select the current NREM period mask
+    nrem_mask = nrem_periods[i]
+    
+    # 2. Detect artifacts (returns BitVectors where true = artifact)
+    b_arts = buckelmueller_artifacts(ts)
+    h_arts = hjorth_artifacts(ts; k=10, mask=nrem_mask)
+    
+    # 3. Combine artifact masks (Union of artifacts)
+    art_mask = b_arts .| h_arts
+    
+    # 4. Compute Spectrogram 
+    # Only includes epochs where nrem_mask is TRUE and art_mask is FALSE
+    spectrogram = spectrum(eeg, "EEG C4-A1"; mask=nrem_mask, reject=art_mask, dB=true)    
+    
+    push!(S, spectrogram)
 end
-
-# Now the ith element in `powers` is the mean delta power # of the ith NREM
-period.
 ```
+
 
