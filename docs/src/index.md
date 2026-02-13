@@ -195,7 +195,7 @@ plot_spectrogram
 freq_band 
 mean_band_power
 total_band_power
-analyze_eeg
+spectrum
 ```
 
 ## Artifact detection 
