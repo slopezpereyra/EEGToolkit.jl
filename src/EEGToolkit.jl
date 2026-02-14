@@ -30,6 +30,16 @@ export length_in_mins
 export length_in_hours
 export gen_time_domain
 
+# Filtering 
+export apply_lowpass
+export apply_lowpass!
+export apply_highpass
+export apply_highpass!
+export apply_bandpass
+export apply_bandpass!
+export apply_notch
+export apply_notch!
+
 # EEG & Masking
 export EEG
 export get_channel 
@@ -57,10 +67,11 @@ export relative_band_power
 
 # Slow Wave Detection
 export SlowWave
-export detect_slow_waves_massimini
+export detect_slow_waves
 export compute_morphology_metrics 
 export plot_single_wave           
 export plot_average_morphology   
+export filter_waves
 
 # NREM (Assuming in nrem.jl)
 export nrem
@@ -78,6 +89,8 @@ export compute_coherence
 include("staging.jl")
 include("hypnograms.jl")
 include("ts.jl")
+
+include("filtering.jl")
 
 # Hjorth must be included before artifacts because artifacts.jl uses it
 include("hjorth.jl")      

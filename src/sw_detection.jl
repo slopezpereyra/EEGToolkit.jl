@@ -14,6 +14,7 @@ A structure representing a detected Slow Wave Oscillation.
 - `ptp_amp::Float64`: Peak-to-peak amplitude (µV).
 - `duration::Float64`: Total duration of the wave (seconds).
 - `frequency::Float64`: Instantaneous frequency (Hz).
+- `epoch::Integer`: To which epoch does the (beginning of the) slow wave belong? Useful for masking.
 """
 struct SlowWave
     start_idx::Int
@@ -26,10 +27,11 @@ struct SlowWave
     ptp_amp::Float64
     duration::Float64
     frequency::Float64
+    epoch::Integer
 end
 
 """
-detect_slow_waves_massimini(signal::Vector{T}, fs::Number; kwargs...)
+detect_slow_waves(signal::Vector{T}, fs::Number; kwargs...)
 
 Implements the Negative-Peak Method for Slow Wave detection as described by Massimini et al. (2004).
 
@@ -54,7 +56,7 @@ the wave based on zero-crossing intervals and amplitude thresholds.
 # Reference
 Massimini, M., et al. (2004). "The sleep slow oscillation as a traveling wave." J Neurosci.
 """
-function detect_slow_waves_massimini(
+function detect_slow_waves(
     signal::Vector{T}, 
     fs::Number;
     freq_band::Tuple{Float64, Float64}=(0.1, 4.0),
@@ -64,11 +66,7 @@ function detect_slow_waves_massimini(
     dur_total::Tuple{Float64, Float64}=(0.5, 2.0)
 ) where T <: AbstractFloat
 
-    # FIX: Normalize frequencies by Nyquist
-    nyquist = fs / 2
-    responsetype = Bandpass(freq_band[1]/nyquist, freq_band[2]/nyquist)
-    designmethod = Butterworth(2)
-    clean_signal = filtfilt(digitalfilter(responsetype, designmethod), signal)
+    clean_signal = apply_bandpass(signal, fs, freq_band)
 
     # 2. Identify Zero-Crossings
     zx_indices = findall(x -> x < 0, clean_signal[1:end-1] .* clean_signal[2:end])
@@ -104,10 +102,23 @@ function detect_slow_waves_massimini(
         ptp = max_val - min_val
         if ptp < amp_ptp; i += 1; continue; end
 
+        # Calculate Epoch (cld = ceiling division)
+        samples_per_epoch = fs * 30
+        current_epoch = Int(cld(t1, samples_per_epoch))
+
         # Register Wave
         wave = SlowWave(
-            t1, t1 + min_idx_rel - 1, t2, t2 + max_idx_rel - 1, t3,
-            min_val, max_val, ptp, dur_t, 1.0 / dur_t
+            t1, 
+            t1 + min_idx_rel - 1, 
+            t2, 
+            t2 + max_idx_rel - 1, 
+            t3,
+            min_val, 
+            max_val, 
+            ptp, 
+            dur_t, 
+            1.0 / dur_t,
+            current_epoch
         )
         push!(detected_waves, wave)
         i += 2
@@ -115,30 +126,24 @@ function detect_slow_waves_massimini(
     return detected_waves
 end
 
-# Wrapper
-function detect_slow_waves_massimini(ts::TimeSeries; kwargs...)
-    detect_slow_waves_massimini(ts.x, ts.fs; kwargs...)
+"""
+    detect_slow_waves(ts::TimeSeries; kwargs...)
+Wrapper for `TimeSeries` input. Extracts the signal and sampling frequency, then calls the main detection function.
+"""
+function detect_slow_waves(ts::TimeSeries; kwargs...)
+    detect_slow_waves(ts.x, ts.fs; kwargs...)
 end
 
 
-
-# Helper function to ensure consistent, crash-free filtering
-function apply_bandpass(signal::AbstractVector, fs::Real, freq_band::Tuple{Real, Real})
-    nyquist = fs / 2
-    # Normalize frequencies: f_Hz / f_Nyquist
-    norm_low = freq_band[1] / nyquist
-    norm_high = freq_band[2] / nyquist
-    
-    responsetype = Bandpass(norm_low, norm_high)
-    designmethod = Butterworth(2) # Massimini uses 2nd order (zero-phase becomes 4th order eff.)
-    
-    return filtfilt(digitalfilter(responsetype, designmethod), signal)
-end
 
 """
     plot_single_wave(signal, fs, wave; padding=2.0, freq_band=(0.1, 4.0))
 
-Plots a specific detected Slow Wave with context.
+Plots a specific detected Slow Wave with context. The plot includes:
+- The filtered signal segment around the wave (in gray).
+- The detected wave itself highlighted in red.
+- Markers for the negative and positive peaks.
+- Vertical dashed lines for the zero-crossings (start, mid, end).
 """
 function plot_single_wave(signal::Vector, fs::Number, wave; 
                           padding::Float64=2.0, 
@@ -218,15 +223,51 @@ function plot_single_wave(signal::Vector, fs::Number, wave;
     return p
 end
 
-# Wrapper for TimeSeries
+"""
+    plot_single_wave(ts::TimeSeries, wave; kwargs...)
+Wrapper for `TimeSeries` input. Extracts the signal and sampling frequency, then calls the main plotting function.
+"""
 function plot_single_wave(ts::TimeSeries, wave; kwargs...)
     plot_single_wave(ts.x, ts.fs, wave; kwargs...)
 end
 
-"""
-    plot_average_morphology(signal, fs, waves; window=1.0, align=:neg_peak)
 
-Calculates and plots the Grand Average of detected waves.
+"""
+    plot_average_morphology(signal::Vector, fs::Number, waves::Vector; window=1.0, freq_band=(0.1, 4.0), align=:neg_peak)
+
+Calculates and plots the Grand Average (mean waveform) of a set of detected slow
+waves, aligned to a specific feature.
+
+This function allows you to visualize the "prototypical" shape of the slow
+oscillations in your data by averaging all detected events. It handles signal
+filtering, segment extraction, alignment, and visualization with standard
+deviation confidence intervals.
+
+# Arguments
+
+- `signal::Vector`: The raw or pre-processed EEG data vector (single channel).
+- `fs::Number`: The sampling frequency of the signal in Hz.
+- `waves::Vector`: A list of detected wave objects (e.g., `SlowWave` structs). Each object must contain index fields corresponding to the chosen alignment (e.g., `neg_peak_idx`).
+
+# Keyword Arguments
+
+- `window::Float64`: The time window (in seconds) to include *before* and *after* the alignment point. 
+    - Default: `1.0` (resulting in a 2-second total plot duration: -1.0s to +1.0s).
+    - **Note:** Waves that are too close to the start or end of the signal to fit this window will be excluded.
+
+- `freq_band::Tuple{Float64, Float64}`: The frequency range for the bandpass filter applied prior to averaging.
+    - Default: `(0.1, 4.0)` Hz (Delta band).
+    - **Purpose:** Ensures the morphology reflects the slow-wave component specifically, removing noise or faster activity (like spindles) that might obscure the mean shape.
+
+- `align::Symbol`: The feature of the wave to use as the center (0s) of the time axis.
+    - `:neg_peak` (Default): Aligns to the trough of the slow wave (the "Down-state").
+    - `:pos_peak`: Aligns to the subsequent positive peak (the "Up-state").
+    - `:mid`: Aligns to the zero-crossing between the negative and positive phases.
+    - `:start`: Aligns to the first zero-crossing (start of the wave).
+
+# Returns
+
+- `Plots.Plot`: A plot object displaying the mean waveform (thick blue line) and the standard deviation (shaded region).
 """
 function plot_average_morphology(signal::Vector, fs::Number, waves::Vector; 
                                  window::Float64=1.0, 
@@ -308,7 +349,10 @@ function plot_average_morphology(signal::Vector, fs::Number, waves::Vector;
     return p
 end
 
-# Wrapper for TimeSeries
+"""
+    plot_average_morphology(ts::TimeSeries, waves::Vector; kwargs...)
+Wrapper for `TimeSeries` input. Extracts the signal and sampling frequency, then calls the main plotting function.
+"""
 function plot_average_morphology(ts::TimeSeries, waves::Vector; kwargs...)
     plot_average_morphology(ts.x, ts.fs, waves; kwargs...)
 end
@@ -360,7 +404,22 @@ function compute_morphology_metrics(waves::Vector{SlowWave}, signal::AbstractVec
     return (density, mean_dur, mean_ptp, mean_slope)
 end
 
-# Wrapper for TimeSeries object
+"""
+    compute_morphology_metrics(waves::Vector{SlowWave}, ts::TimeSeries)
+
+Wrapper for `TimeSeries` input. Extracts the signal and sampling frequency, then calls the main computation function.
+"""
 function compute_morphology_metrics(waves::Vector{SlowWave}, ts::TimeSeries)
     compute_morphology_metrics(waves, ts.x, ts.fs)
 end
+
+"""
+    filter_waves(waves::Vector{SlowWave}, mask::BitVector)
+
+Filters a list of SlowWaves, returning only those that belong to epochs 
+where `mask` is true.
+"""
+function filter_waves(waves::Vector{SlowWave}, mask::Union{BitVector, Vector{Bool}})
+    filter(w -> 1 <= w.epoch <= length(mask) && mask[w.epoch], waves)
+end
+

@@ -48,6 +48,7 @@ analyzed in seconds.
 ## Package Features
 - Loading and processing EEG data
 - EEG visualization
+- Resampling and filtering
 - Masking and conditional analysis
 - Sleep stage handling 
 - NREM Period detection
@@ -56,7 +57,6 @@ analyzed in seconds.
 - Slow Wave detection
 - Connectivity metrics (wPLI and coherence)
 - Automated artifact detection
-- Resampling
 - Hypnograms
 
 ## Time series
@@ -88,6 +88,27 @@ filter_channels
 filter_channels!
 remove_channel!
 plot_eeg
+```
+
+
+## Resampling 
+
+The package provides rational factor resampling to change the sampling rate of a
+`TimeSeries`. This is implemented via polyphase filtering (inserting zeros,
+low-pass filtering, and decimating) to avoid aliasing artifacts. It also
+provides wrappers around DSP functions for filtering raw signals as well as 
+time series objects.
+
+```@docs
+resample 
+apply_lowpass 
+apply_lowpass!
+apply_highpass
+apply_highpass!
+apply_bandpass
+apply_bandpass!
+apply_notch
+apply_notch!
 ```
 
 ## Masking and Conditional Analysis
@@ -175,7 +196,8 @@ morphology statistics, and visualization.
 
 ```@docs
 SlowWave
-detect_slow_waves_massimini
+detect_slow_waves
+filter_waves
 compute_morphology_metrics
 plot_single_wave
 plot_average_morphology
@@ -263,15 +285,6 @@ buckelmueller_artifacts
 hjorth_artifacts
 ```
 
-## Resampling 
-
-The package provides rational factor resampling to change the sampling rate of a
-`TimeSeries`. This is implemented via polyphase filtering (inserting zeros,
-low-pass filtering, and decimating) to avoid aliasing artifacts.
-
-```@docs
-resample 
-```
 
 
 ## Helpers
