@@ -51,7 +51,17 @@ Base.iterate(s::Staging, state...) = iterate(s.stages, state...)
 Base.first(s::Staging) = first(s.stages)
 Base.tail(s::Staging) = tail(s.stages)
 
+"""
+    `function stage_mask(staging::Staging; include)`
 
+Given a `Staging` vector, return a `BitVector` mask where `true` corresponds to epochs whose stage is in the set of stages specified by `include`.
+
+The `include` argument can be either a `Symbol` or a vector of `Symbol`s or
+`String`s. If `include` is a `Symbol`, it should be one of the keys in
+`STAGE_GROUPS`, and the mask will include all stages in the corresponding group.
+If `include` is a vector, it can contain either `Symbol`s (which will be looked
+up in `STAGE_GROUPS`) or `String`s (which will be included directly).
+"""
 function stage_mask(staging::Staging; include)
 
     allowed = if include isa Symbol

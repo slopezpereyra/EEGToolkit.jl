@@ -52,6 +52,11 @@ function length_in_mins(ts::TimeSeries)
   length_in_secs(ts)/60
 end
 
+"""
+    `num_epochs(ts::TimeSeries, epoch_length::Int)`
+
+Returns the number of epochs of a time series, given an epoch length in seconds.
+"""
 function num_epochs(ts::TimeSeries, epoch_length::Int)::Int
   total_duration = length(ts.x) / ts.fs
   floor(Int, total_duration / epoch_length)
@@ -165,6 +170,10 @@ represents a segment.
 
 Any elements at the end of `v` that do not fit into a complete segment of length
 `L` are discarded (i.e., the operation is always symmetric/truncated).
+
+This function is equivalent to `segment(v, L; symmetric=true)` followed by
+reshaping the resulting segments into a matrix, but significantly more 
+efficient.
 
 # Examples
 
@@ -352,4 +361,32 @@ function apply_epoch_mask(segs::Vector{Vector{T}}, mask::BitVector) where T
     return segs[mask]
 end
 
+"""
+    trim_to_epochs(ts::TimeSeries, epoch_length::Int)
 
+Returns a new TimeSeries trimmed so that its duration is an exact multiple 
+of the `epoch_length` in seconds.
+"""
+function trim_to_epochs(ts::TimeSeries, epoch_length::Int)::TimeSeries
+    n = num_epochs(ts, epoch_length)
+    max_samples = n * epoch_length * ts.fs
+    
+    # Return a new TimeSeries with the sliced vector
+    return TimeSeries(ts.x[1:max_samples], ts.fs)
+end
+
+"""
+    trim_to_epochs!(ts::TimeSeries, epoch_length::Int)
+
+In-place version of `trim_to_epochs`. Modifies the input `TimeSeries` 
+by resizing its internal data vector.
+"""
+function trim_to_epochs!(ts::TimeSeries, epoch_length::Int)::TimeSeries
+    n = num_epochs(ts, epoch_length)
+    max_samples = n * epoch_length * ts.fs
+    
+    # Modify the internal vector in-place
+    resize!(ts.x, max_samples)
+    
+    return ts
+end

@@ -64,18 +64,19 @@ end
                             delta_threshold=2.5,
                             beta_threshold=2.0) -> Vector{Bool}
 
-Detect artifact epochs using a local spectral power ratio criterion
-inspired by Buckelmueller-style artifact detection.
+Detect artifact epochs using a local spectral power ratio criterion inspired by
+Buckelmueller-style artifact detection.
 
-The signal is segmented into 30-second epochs. For each epoch, power
-spectral density (PSD) is computed and band power is extracted for:
+The signal is segmented into 30-second epochs. 
+For each epoch, power spectral density (PSD) is computed and band power is
+extracted for:
 
 - Delta band: 0.6–4.6 Hz
 - Beta band: 40–60 Hz
 
-An epoch is flagged as an artifact if its band power exceeds the
-mean band power of neighboring epochs within a sliding window
-(excluding the center epoch) by a specified ratio threshold.
+An epoch is flagged as an artifact if its band power exceeds the mean band power
+of neighboring epochs within a sliding window (excluding the center epoch) by a
+specified ratio threshold.
 
 Specifically, an epoch `i` is marked as an artifact if:
 
@@ -86,6 +87,12 @@ or
     beta_power[i] / local_beta_mean > beta_threshold
 
 where local means are computed over the surrounding window.
+
+
+Segmentation is done symmetrically, so if the signal has an ending epoch of <30
+seconds, it will will be dropped. This may result in the output mask having a
+length of `num_epochs(signal) - 1` instead of `num_epochs(signal)`.
+
 
 # Arguments
 
@@ -124,7 +131,7 @@ function buckelmueller_artifacts(
     fs = signal.fs
     epoch_len = fs * 30
 
-    segments = segment(signal.x, epoch_len)
+    segments = segment(signal.x, epoch_len; symmetric=true)
     n_epochs = length(segments)
 
     # Output preallocation

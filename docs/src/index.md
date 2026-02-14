@@ -66,6 +66,9 @@ analyzed in seconds.
 TimeSeries
 segment
 epoch
+num_epochs 
+trim_to_epochs 
+trim_to_epochs!
 plot_ts
 seconds_to_time
 ```
@@ -129,6 +132,7 @@ documentation above).
 ```@docs
 get_masks
 add_mask!
+stage_mask
 ```
 
 

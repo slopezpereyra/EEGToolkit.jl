@@ -22,6 +22,7 @@ export hjorth_parameters
 # Time Series
 export TimeSeries
 export segment
+export segment_matrix
 export epoch 
 export plot_ts
 export seconds_to_time
@@ -29,6 +30,9 @@ export length_in_secs
 export length_in_mins
 export length_in_hours
 export gen_time_domain
+export num_epochs
+export trim_to_epochs
+export trim_to_epochs!
 
 # Filtering 
 export apply_lowpass
@@ -83,6 +87,10 @@ export relative_spindle_power
 # Connectivity
 export compute_wpli
 export compute_coherence
+
+# Staging 
+export STAGE_GROUPS
+export stage_mask
 
 # --- Includes ---
 
