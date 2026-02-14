@@ -185,28 +185,27 @@ function plot_eeg(eeg::EEG, s::Integer, e::Integer;
 end
 
 
+"""
+    add_mask!(eeg::EEG, name::Symbol, mask::BitVector)
+
+Adds a mask with key `name` and value `mask` to the global masks of `eeg`. Global masks apply to all channels (e.g. a NREM masks).
+"""
 function add_mask!(eeg::EEG, name::Symbol, mask::BitVector)
     eeg._global_masks[name] = mask
 end
+
+
+"""
+    add_mask!(eeg::EEG, channel::String, name::Symbol, mask::BitVector)
+
+Adds a mask with key `name` and value `mask` to the masks of `channel` in `eeg`.
+Channel-specific masks apply only to a single channel (e.g. an artifact mask).
+"""
 
 function add_mask!(eeg::EEG, channel::String, name::Symbol, mask::BitVector)
     eeg._channel_masks[channel][name] = mask
 end
 
-function combined_mask(eeg::EEG, channel::String)
-
-    masks = BitVector[]
-
-    append!(masks, values(eeg._global_masks))
-
-    if haskey(eeg._channel_masks, channel)
-        append!(masks, values(eeg._channel_masks[channel]))
-    end
-
-    isempty(masks) && return nothing
-
-    reduce(|, masks)
-end
 
 """
     get_masks(eeg::EEG)::Dict{Symbol,BitVector}

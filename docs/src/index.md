@@ -72,23 +72,43 @@ seconds_to_time
 
 ## EEG
 
+The `EEG` struct is the core data structure of this package. It encapsulates the
+raw EEG data as a dictionary of `String` to `TimeSeries` objects. It also
+contains global and channel-specific masks for conditional analysis, in the form
+of dictionaries of `Symbol` to `BitVector` data. These information is hidden
+from the user and can only be accessed or manipulated through the provided API, 
+ensuring data integrity and consistency.
+
 
 ```@docs
 EEG
+get_channel 
+get_channels 
+filter_channels
+filter_channels!
 remove_channel!
 plot_eeg
 ```
 
 ## Masking and Conditional Analysis
 
-This package allows for the use of **masks** (BitVectors) to perform conditional
-analysis. Masks allow you to selectively include or reject specific epochs
-during analysis without modifying the underlying raw data.
+As stated abovoe, this package allows for the use of **masks** (BitVectors) to
+perform conditional analysis. Masks allow you to selectively include or reject
+specific epochs during analysis without modifying the underlying raw data.
 
 - **Inclusion Masks (`mask`)**: A `BitVector` where `true` indicates epochs to *keep* (e.g., only analyzing NREM sleep).
 - **Rejection Masks (`reject`)**: A `BitVector` where `true` indicates epochs to *discard* (e.g., artifact-laden epochs).
 
-These are particularly useful when combining sleep staging with artifact detection.
+Masks can be stored in the `EEG` struct or created on-the-fly for specific
+analyses. Masks associated to an `EEG` object are always named with a symbol,
+and are either global (apply to all channels) or channel-specific (see `EEG`
+documentation above).
+
+
+```@docs
+get_masks
+add_mask!
+```
 
 
 ## NREM Period detection 

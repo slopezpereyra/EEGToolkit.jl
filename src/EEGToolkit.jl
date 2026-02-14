@@ -40,7 +40,6 @@ export remove_channel!
 export plot_eeg
 export get_masks
 export add_mask!
-export combined_mask
 
 # PSD & Spectral Analysis
 export AmplitudeSpectrum
