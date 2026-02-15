@@ -67,6 +67,7 @@ export zero_pad
 export freq_band 
 export mean_band_power 
 export total_band_power 
+export mean_total_band_power
 export relative_band_power  
 
 # Slow Wave Detection

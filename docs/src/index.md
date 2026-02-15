@@ -241,6 +241,7 @@ plot_spectrogram
 freq_band 
 mean_band_power
 total_band_power
+mean_total_band_power
 spectrum
 ```
 

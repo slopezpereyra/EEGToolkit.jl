@@ -189,7 +189,7 @@ function spectrum(signal::TimeSeries;
     psd_function = x -> PSD(x, signal.fs, 5*signal.fs;
                             normalization=normalization,
                             window_function=window_function,
-                            overlap=overlap) # [cite: 31]
+                            overlap=overlap) 
 
     Spectrogram(segs, psd_function; dB=dB)
 end
@@ -248,7 +248,6 @@ function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer,
   psd_function = x -> PSD(x, fs, 5*fs; normalization=1, window_function=rect, overlap=0)
 
   Spectrogram(signal, 30*fs, psd_function)
-
 end
 
 """
@@ -442,7 +441,7 @@ function mean_band_power(spec::Spectrogram, lower::AbstractFloat, upper::Abstrac
   band = freq_band(spec, lower, upper)
   # Sum columns in band and average by number of columns; 
   # i.e. compute a vector with a mean frequency power per time window
-  frequency_average = mean(band, dims=1) 
+  frequency_average = mean(band, dims=2) 
   # Get the mean across time
   mean(frequency_average)
 end
@@ -465,6 +464,28 @@ Given a PSD, computes the total power in the frequency band `[lower, upper]`.
 function total_band_power(psd::PSD, lower::AbstractFloat, upper::AbstractFloat)
   indexes = findall(x -> x >= lower && x <= upper, psd.freq)
   sum(psd.spectrum[indexes])
+end
+
+"""
+`mean_total_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
+
+Calculates the total power within the band `[lower, upper]` for each epoch (time window) 
+and then returns the average of these totals across all epochs.
+
+This follows the procedure of adding power in frequency bins (e.g., 0.8 to 4.0 Hz) 
+per epoch and then averaging over the selected periods (like NREM).
+"""
+function mean_total_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
+    # 1. Get the matrix of power values within the specified frequency band 
+    # Dimensions: (Number of Epochs M) x (Number of frequency bins in band K)
+    band_matrix = freq_band(spec, lower, upper)
+    
+    # 2. For each epoch, add the power in each of the frequency bins (Sum across columns)
+    # This results in a vector where each element is the total power for that specific epoch.
+    total_power_per_epoch = sum(band_matrix, dims=2)
+    
+    # 3. Average over all epochs
+    return mean(total_power_per_epoch)
 end
 
 ### RELATIVE POWER SPECTRUM 

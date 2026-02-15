@@ -114,7 +114,7 @@ function apply_notch(x::AbstractVector, fs::Real, freq::Real; bandwidth=2.0, ord
     nyquist = fs / 2
     low = (freq - bandwidth/2) / nyquist
     high = (freq + bandwidth/2) / nyquist
-    responsetype = Stopband(low, high)
+    responsetype = Bandstop(low, high)
     designmethod = Butterworth(order)
     return filtfilt(digitalfilter(responsetype, designmethod), x)
 end
