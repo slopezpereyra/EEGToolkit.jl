@@ -6,6 +6,8 @@ using Plots
 using FFTW
 using DSP
 using Statistics
+using StatsBase
+using DataInterpolations
 #using DataFrames
 
 export Staging
@@ -92,6 +94,10 @@ export compute_coherence
 # Staging 
 export STAGE_GROUPS
 export stage_mask
+
+# EMD 
+export emd
+export hht
 
 # --- Includes ---
 
