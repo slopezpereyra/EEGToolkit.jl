@@ -58,6 +58,7 @@ analyzed in seconds.
 - Connectivity metrics (wPLI and coherence)
 - Automated artifact detection
 - Hypnograms
+- Empirical mode decomposition and Hilbert-Huang transform
 
 ## Time series
 
@@ -94,7 +95,7 @@ plot_eeg
 ```
 
 
-## Resampling 
+## Resampling and filtering
 
 The package provides rational factor resampling to change the sampling rate of a
 `TimeSeries`. This is implemented via polyphase filtering (inserting zeros,
@@ -290,6 +291,27 @@ buckelmueller_artifacts
 hjorth_artifacts
 ```
 
+## Empirical mode decomposition and Hilbert-Huang transform
+
+Empirical mode decomposition (EMD) is a method for decomposing a signal into a
+set of intrinsic mode functions (IMFs) that represent oscillatory modes embedded
+in the signal. The Hilbert-Huang transform (HHT) is a method for analyzing the
+instantaneous frequency and amplitude of the IMFs obtained from EMD. (See [Huang
+et al. (1998)](https://doi.org/10.1098/rspa.1998.0193) for more details).
+
+This package provides native Julia implementations of both EMD and HHT, as well
+as functions for visualizing the resulting IMFs and their Hilbert spectra. The
+EMD implementation uses the standard sifting process to extract IMFs, while the
+HHT implementation computes the instantaneous frequency and amplitude of each
+IMF using the Hilbert transform. 
+
+```@docs
+emd
+hht
+plot_imfs
+plot_hilbert_spectrum
+plot_hilbert_heatmap
+```
 
 
 ## Helpers

@@ -6,6 +6,8 @@ using Plots
 using FFTW
 using DSP
 using Statistics
+using StatsBase
+using DataInterpolations
 #using DataFrames
 
 export Staging
@@ -93,6 +95,13 @@ export compute_coherence
 export STAGE_GROUPS
 export stage_mask
 
+# EMD 
+export emd
+export hht
+export plot_imfs
+export plot_hilbert_spectrum
+export plot_hilbert_heatmap
+
 # --- Includes ---
 
 include("staging.jl")
@@ -112,5 +121,6 @@ include("spindles.jl")
 include("sw_detection.jl")
 include("nrem.jl")
 include("connectivity.jl")
+include("emd.jl")
 
 end
