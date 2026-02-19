@@ -437,7 +437,6 @@ display(p)
 
 ![](assets/psds.png)
 
-```julia
 
 #### EMD decomposition 
 
@@ -445,7 +444,8 @@ The following example demonstrates how to apply Empirical Mode Decomposition
 (EMD) to one epoch of the EEG. For a full-night EEG, since epoch-by-epoch
 looping makes little sense for this method, it would be recommended to resample
 the EEG to a lower sampling rate (e.g. 128Hz) and apply EMD to the entire signal
-at once. This example is just for demonstration purposes.
+at once. 
+
 
 ```julia
 path_to_eeg = "path_to_some_edf"
@@ -457,21 +457,30 @@ epoch_ts = epoch(ts, 30)
 imfs = emd(epoch_ts) # Decompose into IMFs
 inst_amp, inst_freq = hht(imfs) # Apply Hilbert-Huang transform to IMFs 
 
+p1 = plot_imfs(imfs)  
+```
+
+
+![](assets/imfs_plot.png)
+
+We could also plot the Hilbert spectrum, which shows the instantaneous frequency
+and amplitude of the IMFs over time. This can be done in two ways, both
+exemplified below.
+
+```julia 
 # We generate a 30-sec time range for the plots
 n = length(inst_amp[1]) 
 t_range = range(0, stop=30, length=n)
 
 # Plot IMFS
-p1 = plot_imfs(imfs)  
 # Plot Hilbert spectrum 
 p2 = plot_hilbert_spectrum(inst_amp, inst_freq, t_range; freq_lims=(0, 30))
 
 # Plot Hilbert spectrogram
 p3 = plot_hilbert_heatmap(inst_amp, inst_freq, t_range; freq_lims=(0, 30))
+
 ```
 
-
-![](assets/imfs_plot.png)
 ![](assets/h_spectrum.png)
 ![](assets/h_heatmap.png)
 
