@@ -61,7 +61,7 @@ export add_mask!
 export AmplitudeSpectrum
 export PSD 
 export Spectrogram
-export spectrum            
+export epoch_spectrogram            
 export plot_spectrogram 
 export plot_psd
 export next_power_of_two 

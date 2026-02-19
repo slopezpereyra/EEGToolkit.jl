@@ -121,9 +121,6 @@ As stated abovoe, this package allows for the use of **masks** (BitVectors) to
 perform conditional analysis. Masks allow you to selectively include or reject
 specific epochs during analysis without modifying the underlying raw data.
 
-- **Inclusion Masks (`mask`)**: A `BitVector` where `true` indicates epochs to *keep* (e.g., only analyzing NREM sleep).
-- **Rejection Masks (`reject`)**: A `BitVector` where `true` indicates epochs to *discard* (e.g., artifact-laden epochs).
-
 Masks can be stored in the `EEG` struct or created on-the-fly for specific
 analyses. Masks associated to an `EEG` object are always named with a symbol,
 and are either global (apply to all channels) or channel-specific (see `EEG`
@@ -233,22 +230,31 @@ relative_spindle_power
 
 ## Power spectral analysis
 
+This package allows for power spectral analysis of EEG signals. The `PSD` and
+`Spectrogram` constructor functions allow for highly flexible estimation of
+power spectra (e.g. Welch or Bartlett methods, with or without windowing, with
+or without normalization, etc.). However, the `epoch_spectrogram` is an
+off-the-shelf function that computes a spectrogram for an entire EEG signal
+following a standard procedure in sleep science. With default parameters, it
+divides the signal into 30-second epochs, computes the PSD for each epoch using
+Welch's method with Hanning windows (6 overlapping sub-epochs of five seconds
+each), and returns the resulting `Spectrogram`. The average spectrum can be
+obtained via the `avg_spectra` field of the `Spectrogram` struct.
+
 ```@docs
 AmplitudeSpectrum
 PSD
-plot_psd
 Spectrogram
+plot_psd
 plot_spectrogram
 freq_band 
 mean_band_power
 total_band_power
 mean_total_band_power
-spectrum
+epoch_spectrogram
 ```
 
 ## Artifact detection 
-
-
 
 This package provides native Julia implementations for automated artifact
 detection in EEG signals. Two distinct approaches are available: one based on

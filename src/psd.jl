@@ -130,125 +130,101 @@ end
 
 
 """
-`spectrum(signal::Vector{<:AbstractFloat}, fs::Integer)::Spectrogram`
+    epoch_spectrogram(signal::TimeSeries; 
+                      window_function::Function=hanning, 
+                      overlap::Union{<:AbstractFloat, Integer}=0.5, 
+                      normalization::Real=1, 
+                      mask::Union{Nothing, BitVector}=nothing, 
+                      dB::Bool=false)
 
-Wrapper for power spectral analysis over a signal. Defaults to Welch's method
-with a Hanning window, but Barlett's method can be used by setting `overlap=0`
-and `window_function=rect`.
+Flexible wrapper for computing the epoch-by-epoch spectrogram of an EEG signal. 
 
-Signal is split into 30-sec epochs, and the spectrum is computed as the
-aggregated spectra of these epochs. An optional `mask` may be applied to the
-epochs, which should be a `BitVector` of the same length as the number of
-epochs, with `true` for epochs to include in the analysis and `false` for epochs
-to exclude.
-
-A `rejection` mask may also be applied, which should also be a `BitVector` of
-the same length as the number of epochs, with `true` for epochs to reject (e.g.
-due to artifacts) and `false` for epochs to keep. If both a `mask` and a
-`reject` mask are provided, the final set of epochs included in the analysis
-will be those that are `true` in the `mask` and `false` in the `reject` mask.
-
-A normalization factor can be set with the `normalization` argument, which
-defaults to `1` (no normalization). For innstance, setting `normalization =
-signal.fs` will normalize the spectrum by the sampling rate, thus computing the
-power spectral density.
-
-"""
-function spectrum(signal::TimeSeries; 
-                  window_function::Function=hanning,
-                  overlap::Union{<:AbstractFloat,Integer}=0.5,
-                  normalization::Real=1,
-                  mask::Union{Nothing,BitVector}=nothing,
-                  reject::Union{Nothing,BitVector}=nothing,
-                  dB=false) 
-
-    epoch_len = 30 * signal.fs
-    segs = segment(signal.x, epoch_len; symmetric=true)
-    
-    # 1. Validación de longitud (defensiva)
-    n_epochs = length(segs)
-    keep_mask = trues(n_epochs)
-    
-    if mask !== nothing
-        if length(mask) != n_epochs
-            throw(ArgumentError("La longitud de 'mask' no coincide con el número de épocas."))
-        end
-        keep_mask .&= mask
-    end
-    
-    # Keep = Keep AND (NOT Reject)
-    if reject !== nothing
-        if length(reject) != n_epochs
-            throw(ArgumentError("La longitud de 'reject' no coincide con el número de épocas."))
-        end
-        keep_mask .&= (.!reject) # .!reject is element-wise bit flip.
-    end
-
-    segs = apply_epoch_mask(segs, keep_mask)
-
-    psd_function = x -> PSD(x, signal.fs, 5*signal.fs;
-                            normalization=normalization,
-                            window_function=window_function,
-                            overlap=overlap) 
-
-    Spectrogram(segs, psd_function; dB=dB)
-end
-
-"""
-spectrum(eeg::EEG, channel::String; ...)
-
-Wrapper para realizar análisis espectral sobre un canal específico de un EEG.
-Soporta máscaras de inclusión (`mask`) y de rechazo (`reject`).
+The signal is split into 30-second epochs. The spectrum of each epoch is
+computed using by default Welch's method with six overlapping windows of five
+seconds each. Bartlett's method may be used by setting `overlap=0` and
+`window=rect`. 
 
 # Arguments
-- `mask`: BitVector para incluir épocas (ej. estadios de sueño).
-- `reject`: BitVector para excluir épocas (ej. artefactos).
-"""
-function spectrum(eeg::EEG,
-                  channel::String;
-                  window_function::Function=hanning,
-                  overlap::Union{<:AbstractFloat,Integer}=0.5,
-                  normalization::Real=1,
-                  mask::Union{Nothing,BitVector}=nothing,
-                  reject::Union{Nothing,BitVector}=nothing,
-                  dB=false) 
 
-    ts = get_channel(eeg, channel) 
-    spectrum(ts;
-        window_function = window_function,
-        overlap = overlap,
-        normalization = normalization,
-        mask = mask, 
-        reject = reject,
-        dB = dB
-    )
+- `signal::TimeSeries`: The input signal containing data and sampling rate (`fs`).
+
+# Keyword Arguments
+
+- `window_function`: Window function to apply (default: `hanning`).
+- `overlap`: Overlap between segments (default: `0.5`). 
+- `normalization`: Normalization factor (default: `1`). Set to `signal.fs` for PSD.
+- `mask`: Optional `BitVector` of the same length as the number of epochs. 
+    - `true`: Include epoch in analysis.
+    - `false`: Reject/Exclude epoch.
+- `dB`: If `true`, returns results in decibels.
+
+# Returns
+A `Spectrogram` object.
+"""
+function epoch_spectrogram(signal::TimeSeries; 
+                           window_function::Function=hanning, 
+                           overlap::Union{<:AbstractFloat, Integer}=0.5, 
+                           normalization::Real=1, 
+                           mask::Union{Nothing, BitVector}=nothing, 
+                           dB::Bool=false)
+
+    # 1. Segment the signal
+    epoch_len = 30 * signal.fs
+    segs = segment(signal.x, epoch_len; symmetric=true)
+    n_epochs = length(segs)
+
+    # 2. Validation and Mask Logic
+    # If no mask is provided, keep all epochs (all true).
+    keep_mask = if isnothing(mask)
+        trues(n_epochs)
+    else
+        if length(mask) != n_epochs
+            throw(ArgumentError("The length of 'mask' ($(length(mask))) does not match the number of epochs ($n_epochs)."))
+        end
+        mask
+    end
+
+    # Assuming apply_epoch_mask handles the filtering based on the BitVector
+    filtered_segs = apply_epoch_mask(segs, keep_mask)
+
+    # 4. Define PSD function wrapper
+    psd_function = x -> PSD(x, signal.fs, 5 * signal.fs; 
+                            normalization=normalization, 
+                            window_function=window_function, 
+                            overlap=overlap) 
+
+    # 5. Compute Spectrogram
+    Spectrogram(filtered_segs, psd_function; dB=dB)
 end
 
 
-"""
-`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer, epoch_indexes::Vector{<:Integer})::Spectrogram`
+# DEPRECTADE: This method replicated results from H. van Dongen's lab at WSU in
+# collaboration with the developer. Currently deprecated.
 
-Perform a standardized analysis of the specified epochs of an EEG signal. 
-This analysis procedure succesfully replicated results from Washington State 
-University in collaboration with the developer's laboratory at UPenn. 
-
-The standardized procedure is as follows: split the signal into 30-sec epochs,
-each of which is split into 5-sec sub-epochs. Each epoch's spectrum is the 
-aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated 
-spectra from its epochs.
-
-"""
-function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer,
-                     epoch_indexes::Vector{<:Integer})::Spectrogram
-
-  # The function to be applied to each epoch. Observe that 5*fs is the 
-  # sub-epoch length: each epoch's spectrum will be the aggregated spectra 
-  # of its sub-epochs.
-  signal = vcat(segment(signal, fs*30; symmetric=true)[epoch_indexes]...)
-  psd_function = x -> PSD(x, fs, 5*fs; normalization=1, window_function=rect, overlap=0)
-
-  Spectrogram(signal, 30*fs, psd_function)
-end
+#"""
+#`analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer, epoch_indexes::Vector{<:Integer})::Spectrogram`
+#
+#Perform a standardized analysis of the specified epochs of an EEG signal. 
+#This analysis procedure succesfully replicated results from Washington State 
+#University in collaboration with the developer's laboratory at UPenn. 
+#
+#The standardized procedure is as follows: split the signal into 30-sec epochs,
+#each of which is split into 5-sec sub-epochs. Each epoch's spectrum is the 
+#aggregated spectra from its sub-epochs; the signal's spectrum is the aggregated 
+#spectra from its epochs.
+#
+#"""
+#function analyze_eeg(signal::Vector{<:AbstractFloat}, fs::Integer,
+#                     epoch_indexes::Vector{<:Integer})::Spectrogram
+#
+#  # The function to be applied to each epoch. Observe that 5*fs is the 
+#  # sub-epoch length: each epoch's spectrum will be the aggregated spectra 
+#  # of its sub-epochs.
+#  signal = vcat(segment(signal, fs*30; symmetric=true)[epoch_indexes]...)
+#  psd_function = x -> PSD(x, fs, 5*fs; normalization=1, window_function=rect, overlap=0)
+#
+#  Spectrogram(signal, 30*fs, psd_function)
+#end
 
 """
 A spectrogram is a matrix ``S^{M \\times F}`` where ``M`` is the number of windows in 
