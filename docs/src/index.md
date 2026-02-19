@@ -40,7 +40,7 @@ analyzed in seconds.
 > any modified version of this package. 
 >
 > Proprietary software hinders the liberty of its users. In science, it
-> obscures the scientific process, difficulting replication and collaboration.
+> obscures the scientific process, hindering replication and collaboration.
 > If you are a scientist, use free software whenever possible.
 
 ---
@@ -79,7 +79,7 @@ seconds_to_time
 The `EEG` struct is the core data structure of this package. It encapsulates the
 raw EEG data as a dictionary of `String` to `TimeSeries` objects. It also
 contains global and channel-specific masks for conditional analysis, in the form
-of dictionaries of `Symbol` to `BitVector` data. These information is hidden
+of dictionaries of `Symbol` to `BitVector` data. This information is hidden
 from the user and can only be accessed or manipulated through the provided API, 
 ensuring data integrity and consistency.
 
@@ -117,7 +117,7 @@ apply_notch!
 
 ## Masking and Conditional Analysis
 
-As stated abovoe, this package allows for the use of **masks** (BitVectors) to
+As stated above, this package allows for the use of **masks** (BitVectors) to
 perform conditional analysis. Masks allow you to selectively include or reject
 specific epochs during analysis without modifying the underlying raw data.
 
@@ -138,7 +138,7 @@ stage_mask
 
 #### NREM period definition
 
-Following [Feinberg & Floyed](https://pubmed.ncbi.nlm.nih.gov/220659/) and
+Following [Feinberg & Floyd](https://pubmed.ncbi.nlm.nih.gov/220659/) and
 Dijk, a NREM period is a sequence of epochs satisfying the following
 conditions:
 
@@ -148,7 +148,7 @@ conditions:
   of wakefulness. 
 
 Epochs in the sequence are allowed to contain occurrences of REM sleep or wakefulness 
-in between, as long as the duration of this occurrences is less than 5 minutes.
+in between, as long as the duration of these occurrences is less than 5 minutes.
 But the epochs corresponding to these occurrences will not be part of the NREM period. For
 example, in a stage sequence of the form
 
@@ -328,7 +328,6 @@ zero_pad
 ```
 
 ## Examples
-
 #### Resampling 
 
 ```julia
@@ -379,13 +378,109 @@ for i in 1:length(nrem_periods)
     
     # 3. Combine artifact masks (Union of artifacts)
     art_mask = b_arts .| h_arts
+
+    # Use simple boolean logic to create final mask.
+    final_mask = .!(art_mask) .& nrem_mask # Non-artifacted NREM epochs
     
     # 4. Compute Spectrogram 
     # Only includes epochs where nrem_mask is TRUE and art_mask is FALSE
-    spectrogram = spectrum(eeg, "EEG C4-A1"; mask=nrem_mask, reject=art_mask, dB=true)    
+    spectrogram = epoch_spectrogram(eeg, "EEG C4-A1"; mask=final_mask, dB=true)    
     
     push!(S, spectrogram)
 end
+
+# Plot each spectrogram for visualization, store plots in list `plots`
+# In this example, four NREM periods were detected, so we will have four
+# spectrograms to plot.
+plots = [plot_spectrogram(s) for s in S]
+# Display the plots in 2x2 grid.
+plot(plots..., layout=(2, 2), size=(800, 600))
+
+# Let us also plot the average spectrum for each period. v
 ```
+
+
+![](assets/spectrograms.png)
+
+We could have also plotted the average spectrum for each period, which is
+obtained via the `avg_spectra` field of the `Spectrogram` struct. This can be easily done constructing a 
+`PSD` object from these spectra and plotting it with `plot_psd`, or with some
+other custom plotting procedure. For example,  
+
+``` julia
+# 1. Prepare the data
+# Notice that we are converting power to decibels for plotting purposes.
+power_spectrums = [PSD(s.freq, pow2db.(s.avg_spectra)) for s in S]
+
+# 2. Initialize the plot with axis limits and styling
+p = plot(
+    title = "PSD comparison across NREM periods",
+    xlabel = "Frequency (Hz)",
+    ylabel = "Power (dB)",
+    legend = :topright,
+    size = (800, 600),
+    xlims = (0, 30),      # Limits the x-axis to 30Hz
+    grid = true
+)
+
+# 3. Iteratively add each period 
+for (i, psd) in enumerate(power_spectrums)
+    plot!(p, psd.freq, psd.spectrum, 
+          label = "NREM period $i", 
+          linewidth = 2.5) 
+end
+
+# 4. Display the result
+display(p)
+```
+
+
+![](assets/psds.png)
+
+```julia
+
+#### EMD decomposition 
+
+The following example demonstrates how to apply Empirical Mode Decomposition
+(EMD) to one epoch of the EEG. For a full-night EEG, since epoch-by-epoch
+looping makes little sense for this method, it would be recommended to resample
+the EEG to a lower sampling rate (e.g. 128Hz) and apply EMD to the entire signal
+at once. This example is just for demonstration purposes.
+
+```julia
+path_to_eeg = "path_to_some_edf"
+channel_name = "C4-A1"
+eeg = EEG(path_to_eeg)
+ts = get_channel(eeg, channel_name) 
+# Select one epoch (e.g. epoch 30)
+epoch_ts = epoch(ts, 30)
+imfs = emd(epoch_ts) # Decompose into IMFs
+inst_amp, inst_freq = hht(imfs) # Apply Hilbert-Huang transform to IMFs 
+
+# We generate a 30-sec time range for the plots
+n = length(inst_amp[1]) 
+t_range = range(0, stop=30, length=n)
+
+# Plot IMFS
+p1 = plot_imfs(imfs)  
+# Plot Hilbert spectrum 
+p2 = plot_hilbert_spectrum(inst_amp, inst_freq, t_range; freq_lims=(0, 30))
+
+# Plot Hilbert spectrogram
+p3 = plot_hilbert_heatmap(inst_amp, inst_freq, t_range; freq_lims=(0, 30))
+```
+
+
+![](assets/imfs_plot.png)
+![](assets/h_spectrum.png)
+![](assets/h_heatmap.png)
+
+
+
+
+
+
+
+
 
 

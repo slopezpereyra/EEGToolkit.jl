@@ -169,10 +169,12 @@ end
 """
     plot_imfs(signal::AbstractVector, imfs::AbstractVector{<:AbstractVector})
 
-Visualizes the Empirical Mode Decomposition results.
+Produces a plot of IMFs derived from the `emd` function.
 - Top subplot: Original Signal.
 - Middle subplots: Intrinsic Mode Functions (IMFs).
 - Bottom subplot: Residual (Trend).
+
+Returns the plot object for further manipulation if needed.
 """
 function plot_imfs(signal::AbstractVector, imfs::AbstractVector{<:AbstractVector})
     n_imfs = length(imfs)
@@ -203,8 +205,7 @@ function plot_imfs(signal::AbstractVector, imfs::AbstractVector{<:AbstractVector
               linewidth=1.5, 
               color=line_color)
     end
-    
-    display(p)
+    return p
 end
 
 """
