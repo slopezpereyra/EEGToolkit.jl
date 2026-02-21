@@ -8,6 +8,7 @@ using DSP
 using Statistics
 using StatsBase
 using DataInterpolations
+using LsqFit
 #using DataFrames
 
 export Staging

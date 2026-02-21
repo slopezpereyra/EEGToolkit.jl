@@ -35,11 +35,6 @@ where `k` is the dissipation constant representing the rate of homeostatic decay
 - `amp::Float64`: The fitted amplitude (predicted SWA % at time = 0).
 - `k_value::Float64`: The dissipation constant (decay rate).
 - `errors::Vector{Float64}`: The standard errors for the fitted parameters.
-
-# Example
-# Fit dissipation starting from epoch 100
-amp, k, errs = sw_dissipation(S; initial_epoch=100)
-println("Homeostatic decay rate (k): ", k)
 """
 function sw_dissipation(S::Spectrogram; 
                         initial_epoch::Int=1, 
