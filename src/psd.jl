@@ -227,22 +227,14 @@ end
 #end
 
 """
-A spectrogram is a matrix ``S^{M \\times F}`` where ``M`` is the number of windows in 
-the windowing of a signal and ``F`` is the length of the spectrum vector in any given window (i.e. the frequency resolution). 
-It is useful to observe spectral changes in time or to compute the 
-spectrum of time-regions of interest (e.g. only NREM periods in a sleep EEG). 
-The information available in direct PSD can be inferred from the spectrogram with ease.
+A spectrogram is a matrix ``S^{M \\times F}`` where ``M`` is the number of
+windows in the windowing of a signal and ``F`` is the length of the spectrum
+vector in any given window (i.e. the frequency resolution). 
 
-For instance, let ``f_1, f_2, \\ldots, f_k`` be a strictly increasing sequence of
-frequencies. Assume these frequencies correspond to the column indexes
-``c_1, c_2, \\ldots, c_k`` of ``S``. Then the mean power in the frequency range 
-``[f_1, f_k]`` is
-
-```math
-\\frac{1}{M} \\sum_{i=1}^{M}\\left[\\frac{1}{c_k - c_1}\\sum_{j=c_1}^{c_k} S_{ij}\\right] = \\frac{1}{M\\big(c_k - c_1\\big)}\\sum_{i=1}^{M}\\sum_{j=c_1}^{c_k} S_{ij}
-```
-
-In this package, mean power in a frequency range is computed with the `mean_band_power` function.
+It is useful to observe spectral changes in time or to compute the spectrum of
+time-regions of interest (e.g. only NREM periods in a sleep EEG). The
+information available in direct PSD can be inferred from the spectrogram with
+ease.
 
 
 # Fields
@@ -464,7 +456,23 @@ function mean_total_band_power(spec::Spectrogram, lower::AbstractFloat, upper::A
     return mean(total_power_per_epoch)
 end
 
+"""
+`absolute_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
+
+Computes the absolute power of a specific frequency band over time from a Spectrogram.
+Returns a Vector of absolute power values (one per time window/epoch).
+"""
+function absolute_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
+    # 1. Get the matrix of power for the specific band (Epochs x Frequency Bins) 
+    band_matrix = freq_band(spec, lower, upper)
+    
+    # 2. Sum across frequency bins (dims=2) to get total power per time point 
+    # We use vec() to convert the resulting 1-column matrix into a standard Vector
+    return vec(sum(band_matrix, dims=2))
+end
+
 ### RELATIVE POWER SPECTRUM 
+
 """
 `relative_band_power(psd::PSD, lower::AbstractFloat, upper::AbstractFloat; total_range::Vector{<:AbstractFloat}=[])`
 

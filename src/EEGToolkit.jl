@@ -102,6 +102,10 @@ export plot_imfs
 export plot_hilbert_spectrum
 export plot_hilbert_heatmap
 
+# Dissipation 
+export sw_dissipation
+export plot_dissipation_fit
+
 # --- Includes ---
 
 include("staging.jl")
@@ -122,5 +126,6 @@ include("sw_detection.jl")
 include("nrem.jl")
 include("connectivity.jl")
 include("emd.jl")
+include("dissipation.jl")
 
 end

@@ -59,6 +59,7 @@ analyzed in seconds.
 - Automated artifact detection
 - Hypnograms
 - Empirical mode decomposition and Hilbert-Huang transform
+- SWA dissipation and exponential decay fitting
 
 ## Time series
 
@@ -320,6 +321,33 @@ plot_hilbert_heatmap
 ```
 
 
+## SWA dissipation and exponential decay fitting
+
+A standard methodology for estimating slow-wave activity (SWA) dissipation is
+replicated from [Armitage et al.](https://pubmed.ncbi.nlm.nih.gov/10974359/).
+Provided a spectrogram, which we presume contains a spectrum per each NREM
+epoch, the procedure: 
+
+- Computes SWA on each epoch, defined as total power in the delta band.
+- Normalizes SWA of each epoch expressing it as a percentage of the total NREM
+  SWA amplitude across the full period.
+- Fits a 2-parameter exponential decay curve to the normalized data using a
+  non-linear least squares optimization algorithm.
+
+The mathematical model utilized for the homeostatic decay is 
+
+
+$$\text{SWA}(t) = \text{amp} \cdot e^{-kt}$$ 
+
+where $\text{amp}$ represents the initial predicted SWA amplitude percentage at
+time zero, and $k$ is the dissipation constant representing the rate of decay
+over NREM sleep time.
+
+```@docs 
+sw_dissipation 
+plot_dissipation_fit
+```
+
 ## Helpers
 
 ```@docs
@@ -437,6 +465,44 @@ display(p)
 
 ![](assets/psds.png)
 
+
+#### SWA dissipation 
+
+We now estimate SWA dissiation on a healthy subject and fit an exponential decay
+model to it, following standard methodology in sleep science. We assume the
+`channel` and `stg` variables are loaded already.
+
+```julia 
+
+# Detect artifacts
+b_arts = buckelmueller_artifacts(channel)    
+h_arts = hjorth_artifacts(channel; k=5)
+
+# Combine both artifact masks
+art_mask = b_arts .| h_arts
+# Flip mask, since now it has 1 where there is ana artifact, 0 where there isn't;
+# and we want 1 ==> use, 0 ==> do not use. 
+art_mask = .!(art_mask)
+
+# Mask for all NREM stages.
+nrem_mask = stage_mask(staging; include=[:N1, :N2, :N3])
+
+# Final mask for artifact-free NREM stages.
+final_mask = art_mask .& nrem_mask
+
+# Compute the spectrogram of the channel using the mask.
+S = spectrum(channel; mask=final_mask)    
+
+# Now that we have the spectrogram, we estimate the parameters 
+# of an exponential decay function fitted over SWA across time.
+amp, k, errs = sw_dissipation(S)
+
+# We plot the fit over the original data, showing SWA dissipation
+plot_dissipation_fit(S, amp, k)
+```
+
+
+![](assets/disipation.png)
 
 #### EMD decomposition 
 
