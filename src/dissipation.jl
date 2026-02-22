@@ -47,7 +47,7 @@ function sw_dissipation(S::Spectrogram;
     end
 
     # 2. Extract absolute delta power (0.4 - 4.0 Hz) per epoch
-    delta_trend_abs = absolute_band_power(S, 0.4, 4.0)
+    delta_trend_abs = total_band_power(S, 0.4, 4.0)
     
     # 3. Data Slicing. Float64 conversion for numerical stability in fitting.
     sliced_trend = Float64.(delta_trend_abs[initial_epoch:final_epoch])
@@ -102,7 +102,7 @@ fitted 2-parameter exponential decay curve.
 """
 function plot_dissipation_fit(S::Spectrogram, amp::Real, k::Real)
     # 1. Reconstruct the normalized data space
-    delta_trend_abs = absolute_band_power(S, 0.4, 4.0)
+    delta_trend_abs = total_band_power(S, 0.4, 4.0)
     total_swa = sum(delta_trend_abs)
     ydata_normalized = (delta_trend_abs ./ total_swa) .* 100
 

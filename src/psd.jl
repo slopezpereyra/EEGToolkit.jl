@@ -434,6 +434,22 @@ function total_band_power(psd::PSD, lower::AbstractFloat, upper::AbstractFloat)
   sum(psd.spectrum[indexes])
 end
 
+
+"""
+`total_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
+
+Computes the total power of a specific frequency band over time from a Spectrogram.
+Returns a Vector of absolute power values (one per time window/epoch).
+"""
+function total_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
+    # 1. Get the matrix of power for the specific band (Epochs x Frequency Bins) 
+    band_matrix = freq_band(spec, lower, upper)
+    
+    # 2. Sum across frequency bins (dims=2) to get total power per time point 
+    # We use vec() to convert the resulting 1-column matrix into a standard Vector
+    return vec(sum(band_matrix, dims=2))
+end
+
 """
 `mean_total_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
 
@@ -456,20 +472,6 @@ function mean_total_band_power(spec::Spectrogram, lower::AbstractFloat, upper::A
     return mean(total_power_per_epoch)
 end
 
-"""
-`absolute_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)`
-
-Computes the absolute power of a specific frequency band over time from a Spectrogram.
-Returns a Vector of absolute power values (one per time window/epoch).
-"""
-function absolute_band_power(spec::Spectrogram, lower::AbstractFloat, upper::AbstractFloat)
-    # 1. Get the matrix of power for the specific band (Epochs x Frequency Bins) 
-    band_matrix = freq_band(spec, lower, upper)
-    
-    # 2. Sum across frequency bins (dims=2) to get total power per time point 
-    # We use vec() to convert the resulting 1-column matrix into a standard Vector
-    return vec(sum(band_matrix, dims=2))
-end
 
 ### RELATIVE POWER SPECTRUM 
 

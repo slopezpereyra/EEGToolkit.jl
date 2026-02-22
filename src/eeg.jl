@@ -69,14 +69,6 @@ struct EEG
 end
 
 
-"""
-get_artifacts(eeg::EEG)::Dict{String, ArtifactData}
-
-Returns artifact data for each channel in the `eeg`.
-"""
-function get_artifacts(eeg::EEG)::Dict{String, ArtifactData}
-  return(eeg._artifacts)
-end
 
 """
 get_channels(eeg::EEG)::Dict{String, TimeSeries}
@@ -85,19 +77,6 @@ Returns the cannels in the `eeg`.
 """
 function get_channels(eeg::EEG)::Dict{String, TimeSeries}
   return(eeg._signals)
-end
-
-
-
-
-"""
-get_artifacts(eeg::EEG, channel_name::String)::ArtifactData
-
-Returns the artifacts of the channel named `channel_name` from the `eeg`.
-
-"""
-function get_artifacts(eeg::EEG, channel_name::String)::ArtifactData
-  eeg._artifacts[channel_name]
 end
 
 """
