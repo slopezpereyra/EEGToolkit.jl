@@ -215,6 +215,10 @@ The outlier detection runs for `k` iterations. In each iteration:
 2. Epochs deviating by more than `z_thresh` from these new statistics are
    added to the artifact mask.
 
+Segmentation is done symmetrically, so if the signal has an ending epoch of <30
+seconds, it will will be dropped. This may result in the output mask having a
+length of `num_epochs(signal) - 1` instead of `num_epochs(signal)`.
+
 # Arguments
 - `signal::TimeSeries`: Input time series.
 
@@ -239,7 +243,7 @@ function hjorth_artifacts(
     # 1. Setup
     fs = signal.fs
     epoch_len = fs * 30
-    segments = segment(signal.x, epoch_len)
+    segments = segment(signal.x, epoch_len; symmetric=true)
     n_epochs = length(segments)
 
     # Validate input mask length if provided
