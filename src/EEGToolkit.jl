@@ -9,7 +9,7 @@ using Statistics
 using StatsBase
 using DataInterpolations
 using LsqFit
-#using DataFrames
+using DataFrames
 
 export Staging
 export plot_hypnogram
@@ -57,6 +57,7 @@ export remove_channel!
 export plot_eeg
 export get_masks
 export add_mask!
+export describe
 
 # PSD & Spectral Analysis
 export AmplitudeSpectrum

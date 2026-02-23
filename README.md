@@ -17,13 +17,19 @@ emphasis on methodological transparency. Current features:
 - Resampling 
 - Automated artifact detection 
 - Hypnograms
+- Brain connectivity
+- Empirical mode decomposition and HHT
+- SWA dissipation and exponential fitting 
+- Slow wave detection 
+- NREM period detection 
+
 
 Read the documentation and find examples [here](https://slopezpereyra.github.io/EEGToolkit.jl/dev/).
 
-To install this package, use the standard package REPL approach.
+To install this package, use the standard REPL approach.
 
 ```
-(@v1.8) pkg> add EEGToolkit
+pkg> add EEGToolkit
 ```
 
 Alternatively,

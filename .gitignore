@@ -6,3 +6,4 @@ docs/build/
 *.csv
 *.xls
 *.zip
+*.cov

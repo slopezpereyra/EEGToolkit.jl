@@ -87,6 +87,7 @@ ensuring data integrity and consistency.
 
 ```@docs
 EEG
+describe
 get_channel 
 get_channels 
 filter_channels
