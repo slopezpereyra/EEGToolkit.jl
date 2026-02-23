@@ -246,8 +246,6 @@ function get_masks(eeg::EEG, channel::String, name::Symbol)::BitVector
     return masks[name]
 end
 
-import StatsBase: describe
-import DataFrames: DataFrame
 
 """
     describe(eeg::EEG; epoch_length::Int=30)
@@ -256,13 +254,19 @@ Imprime un resumen completo del objeto `EEG` y devuelve un `DataFrame`
 con los detalles específicos de cada canal. Intercepta la llamada de StatsBase 
 para evitar el despacho automático hacia flujos IO.
 """
+"""
+    describe(eeg::EEG; epoch_length::Int=30)
+
+Prints a description of the `EEG` object and returns a `DataFrame` with details 
+specific to each channel. 
+"""
 function describe(eeg::EEG; epoch_length::Int=30)
     # Extraemos las señales utilizando tu API
     signals = get_channels(eeg)
     n_channels = length(signals)
     
     println("="^45)
-    println(" 🧠 EEG Summary")
+    println("EEG Summary")
     println("="^45)
     println("Total Channels: ", n_channels)
     
@@ -277,22 +281,24 @@ function describe(eeg::EEG; epoch_length::Int=30)
         return DataFrame()
     end
     
+    # Sintaxis segura para nombres de columnas con espacios/caracteres especiales
     df = DataFrame(
-        Channel = String[], 
-        Sampling_Rate_Hz = Int[], 
-        Duration_sec = Float64[], 
-        Duration_min = Float64[],
-        Num_Epochs = Int[],
-        Channel_Masks = Int[]
+        "Channel" => String[], 
+        "Fs (Hz)" => Int[], 
+        "Duration" => Time[], 
+        "Epochs" => Int[],
+        "Masks" => Int[]
     )
     
     for (name, ts) in signals
         sec = length_in_secs(ts)
-        mins = length_in_mins(ts)
         ep = num_epochs(ts, epoch_length)
         c_masks = length(get_masks(eeg, name)) 
         
-        push!(df, (name, ts.fs, round(sec, digits=2), round(mins, digits=2), ep, c_masks))
+        # Aprovechamos tu función seconds_to_time de src/ts.jl
+        dur_time = seconds_to_time(sec)
+        
+        push!(df, (name, ts.fs, dur_time, ep, c_masks))
     end
     
     return df

@@ -9,7 +9,7 @@ using Statistics
 using StatsBase
 using DataInterpolations
 using LsqFit
-#using DataFrames
+using DataFrames
 
 export Staging
 export plot_hypnogram
